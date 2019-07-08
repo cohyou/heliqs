@@ -87,42 +87,93 @@ fn get_token_string(token_bytes: &Vec<u8>) -> String {
     String::from_utf8(token_bytes.clone()).expect("Found invalid UTF-8")
 }
 
-// fn main() {
-//     use std::io::BufRead;
+#[derive(Debug)]
+struct Module;
 
-//     let stdin = std::io::BufReader::new(std::io::stdin());
-//     let mut lines = stdin.lines();
+use std::io::Lines;
 
-//     let mut mode = LexingMode::Normal;
-//     let mut tokens: Vec<String> = vec![];
-//     let mut current_token: Vec<u8> = vec![];
-
-//     while let Some(Ok(line)) = lines.next() {        
-//         for b in line.into_bytes() {
-//             match b {
-//                 _ if is_whitespace(b) => {
-//                     println!("空白なので{:?}", get_token_string(&current_token));
-//                     current_token.clear();                
-//                 },
-//                 _ => {
-//                     current_token.push(b);
-//                 },
-//             }
-//         }
-//     }
-//     println!("最後なので{:?}", get_token_string(&current_token));
+// fn get_tokens(lines: Lines<std::io::Stdin>) -> Vec<String> {
+//     tokens
 // }
 
-// extern crate itertools;
-// use itertools::Itertools;
-extern crate itertools;
-// use itertools;
-// use std::iter::Peekable;
-
-// pub fn multipeek<I>(iterable: I) -> MultiPeek<I::IntoIter>
-
 fn main() {
-    let it = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
-    let mut it = it.into_iter();
-    itertools::multipeek(it);
+    use std::io::BufRead;
+
+    let stdin = std::io::BufReader::new(std::io::stdin());
+    let mut lines = stdin.lines();
+
+    let mut mode = LexingMode::Normal;
+    let mut tokens: Vec<String> = vec![];
+    let mut current_token: Vec<u8> = vec![];
+
+    loop {
+        if let Some(Ok(line)) = lines.next() {
+            for b in line.into_bytes() {
+                match b {
+                    b'(' => {
+                        // かっこ始まり
+                        tokens.push("(".to_string());
+                        current_token.clear();
+                    },
+                    b')' => {
+                        // かっこ終わり
+                        tokens.push(")".to_string());
+                        current_token.clear();
+                    },
+                    _ if is_whitespace(b) => {
+                        if current_token.len() > 0 {
+                            tokens.push(get_token_string(&current_token));
+                            current_token.clear();
+                        }                                                
+                    },
+                    _ => {
+                        current_token.push(b);
+                    },
+                }
+            }
+        } else {
+            tokens.push(get_token_string(&current_token)); 
+            break;
+        }
+    }    
+
+    let mut current_token_index: usize = 0;
+    // let tokens = get_tokens(lin]es as std::iter::Iterator<Item=String>);
+    if tokens[0] == "(" && tokens[1] == "module" {        
+        println!("OK");
+        current_token_index = 2;
+
+        if tokens[current_token_index] == ")" {
+            println!("モジュール終了");
+        } else {
+            println!("モジュールが正しく終了していない");
+        }
+    } else {
+        println!("正しい形式ではない、moduleが最初");
+    }
+
+    // for t in tokens {
+    //     println!("{:?}", t);
+    //     match t.as_ref() {
+    //         "(" => {
+    //             println!("www");
+    //         },
+    //         _ => println!("wwwaahw4s5")
+    //     }
+    //     println!("{:?}", parse_module());
+    // }
 }
+
+fn parse_module(tokens: impl Iterator::<Item=String>, token_index: usize) -> Module {
+    Module {}
+}
+
+fn parse_func(tokens: impl Iterator::<Item=String>, token_index: usize) {
+    if tokens[token_index] == "(" {
+        ()
+    } else {
+        ()
+    }
+}
+
+// イテレータを自分で作りたい！
