@@ -98,7 +98,7 @@ use std::io::Lines;
 
 fn main() {
     use std::io::BufRead;
-
+    
     let stdin = std::io::BufReader::new(std::io::stdin());
     let mut lines = stdin.lines();
 
@@ -162,6 +162,11 @@ fn main() {
     //     }
     //     println!("{:?}", parse_module());
     // }
+
+    let wann = WannaIter{i:1};
+    for w in wann {
+        println!("{:?}", w);
+    }
 }
 
 fn parse_module(tokens: impl Iterator::<Item=String>, token_index: usize) -> Module {
@@ -169,11 +174,30 @@ fn parse_module(tokens: impl Iterator::<Item=String>, token_index: usize) -> Mod
 }
 
 fn parse_func(tokens: impl Iterator::<Item=String>, token_index: usize) {
-    if tokens[token_index] == "(" {
-        ()
-    } else {
-        ()
-    }
+    // if tokens[token_index] == "(" {
+    //     ()
+    // } else {
+    //     ()
+    // }
+    ()
 }
 
+// use rand::prelude::*;
+
 // イテレータを自分で作りたい！
+struct WannaIter {
+    i: u16,
+}
+
+impl Iterator for WannaIter {
+    type Item = String;
+    fn next(&mut self) -> std::option::Option<Self::Item> {
+        self.i = self.i * 2;
+
+        if self.i > 1000 {
+            None
+        } else {
+            Some(self.i.to_string())
+        }    
+    }
+}
