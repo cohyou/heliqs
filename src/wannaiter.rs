@@ -1,5 +1,5 @@
 #[derive(Debug)]
-enum Token {
+pub enum Token {
     LeftParen,
     RightParen,
     Module,
@@ -8,7 +8,7 @@ enum Token {
 
 // イテレータを自分で作りたい！
 pub struct WannaIter {
-    i: u16,
+    pub i: u16,
 }
 
 impl WannaIter {

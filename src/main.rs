@@ -2,9 +2,18 @@
 
 mod wannaiter;
 
-fn main() {
-    use std::io::BufRead;
-    
+use std::fs::File;
+use std::io::prelude::*;
+
+fn main() {    
+    let file_name = "a.wat";
+    let mut file = File::open(file_name).unwrap();
+
+    let mut s = String::new();
+    file.read_to_string(&mut s).unwrap();
+    println!("pppp{}", s);
+
+    // use std::io::BufRead;
     let stdin = std::io::BufReader::new(std::io::stdin());
     let mut lines = stdin.lines();
 
@@ -69,7 +78,7 @@ fn main() {
     //     println!("{:?}", parse_module());
     // }
 
-    let wann = wannaiter::WannaIter{i:1};
+    let wann = wannaiter::WannaIter{ i: 1 };
     for w in wann {
         println!("{:?}", w);
     }
@@ -108,3 +117,24 @@ struct Module;
 // fn get_tokens(lines: Lines<std::io::Stdin>) -> Vec<String> {
 //     tokens
 // }
+
+fn read_bytes<R: Read>(reader: &mut R) {
+    while let Some(Ok(c)) = reader.bytes().next() {
+        println!("{:?}", c);
+    }
+}
+
+#[test]
+fn test1() {
+    let file_name = "a.wat";
+    let mut file = File::open(file_name).unwrap();
+    read_bytes(&mut file);
+}
+
+#[test]
+fn test2() {
+    use std::io::Cursor;
+    let a = "2tv4ghq73arfe@djim:o;,";
+    let mut cur1 = Cursor::new(a);
+    read_bytes(&mut cur1);
+}
