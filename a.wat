@@ -1,1 +1,1 @@
-((abc))
+(module (func))
