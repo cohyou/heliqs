@@ -3,5 +3,9 @@ pub enum Token {
     LeftParen,
     RightParen,
     Module,
-    Name(String),
+    Import,
+    Func,
+    Symbol(String),
+    Name(String), // $で始まる
+    Empty,
 }

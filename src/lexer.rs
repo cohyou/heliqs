@@ -4,7 +4,14 @@ use token::Token;
 macro_rules! make_token {
     ($bytes:ident) => {
         if !$bytes.is_empty() {
-            Some(Token::Name(String::from_utf8($bytes).unwrap()))
+            let s = String::from_utf8($bytes.to_vec()).unwrap();
+            match s.as_ref() {
+                "module" => Some(Token::Module),
+                "import" => Some(Token::Import),
+                "func" => Some(Token::Func),
+                _ if $bytes[0] == b'$' => Some(Token::Name(s[1..].to_string())),
+                _ => Some(Token::Symbol(s)),
+            }                    
         } else {
             None
         }        
@@ -25,22 +32,7 @@ pub fn lex(reader: &mut (impl Read + Seek)) -> Option<Token> {
                     b' ' => {},
                     _ => {
                         token_bytes.push(c[0]);
-                        loop {
-                            if let Ok(_) = reader.read(&mut c) {
-                                match c[0] {
-                                    b'(' | b')' | b' ' => {
-                                        reader.seek(SeekFrom::Current(-1)).unwrap();
-                                        return make_token!(token_bytes);                                    
-                                    },
-                                    _ => {
-                                        token_bytes.push(c[0]);
-                                    }
-                                }
-                            } else {
-                                // 本当はエラーを返したほうがいい            
-                                return None;
-                            }
-                        }
+                        return lex_chars(reader, &mut token_bytes);
                     },
                 }                            
             } else {
@@ -50,5 +42,25 @@ pub fn lex(reader: &mut (impl Read + Seek)) -> Option<Token> {
             // 本当はエラーを返したほうがいい            
             return None;
         }        
+    }
+}
+
+fn lex_chars(reader: &mut (impl Read + Seek), token_bytes: &mut Vec<u8>) -> Option<Token> {
+    let mut c: &mut [u8] = &mut [0;1];
+    loop {
+        if let Ok(_) = reader.read(&mut c) {
+            match c[0] {
+                b'(' | b')' | b' ' => {
+                    reader.seek(SeekFrom::Current(-1)).unwrap();
+                    return make_token!(token_bytes);                                    
+                },
+                _ => {
+                    token_bytes.push(c[0]);
+                }
+            }
+        } else {
+            // 本当はエラーを返したほうがいい            
+            return None;
+        }
     }
 }

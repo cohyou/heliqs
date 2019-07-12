@@ -1,1 +1,1 @@
-(module (func))
+(module $name (func))
