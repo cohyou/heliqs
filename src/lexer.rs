@@ -1,5 +1,5 @@
 use std::io::{Read, Seek, SeekFrom};
-use token::Token;
+use core::Token;
 
 macro_rules! make_token {
     ($bytes:ident) => {

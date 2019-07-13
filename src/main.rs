@@ -1,7 +1,7 @@
 mod core;
-mod token;
 mod lexer;
 mod parser;
+mod module_maker;
 
 use std::fs::File;
 
@@ -13,6 +13,8 @@ fn main() {
     //     println!("{:?}", t);
     // }
     let mut p = parser::Parser::new();
-    p.parse_module(&mut file);
-    println!("{:?}", p);
+    if let Some(cst) = p.parse(&mut file) {
+        println!("{:?}", cst);
+        println!("{:?}", module_maker::make_module(cst));
+    }
 }
