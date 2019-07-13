@@ -1,5 +1,5 @@
 use std::io::{Read, Seek, SeekFrom};
-use core::Token;
+use core::{Token, ValType};
 
 macro_rules! make_token {
     ($bytes:ident) => {
@@ -8,7 +8,14 @@ macro_rules! make_token {
             match s.as_ref() {
                 "module" => Some(Token::Module),
                 "import" => Some(Token::Import),
+                "type" => Some(Token::Type),
                 "func" => Some(Token::Func),
+                "param" => Some(Token::Param),
+                "result" => Some(Token::FuncResult),
+                "i32" => Some(Token::ValType(ValType::I32)),
+                "i64" => Some(Token::ValType(ValType::I64)),
+                "f32" => Some(Token::ValType(ValType::F32)),
+                "f64" => Some(Token::ValType(ValType::F64)),
                 _ if $bytes[0] == b'$' => Some(Token::Name(s[1..].to_string())),
                 _ => Some(Token::Symbol(s)),
             }                    
@@ -29,7 +36,7 @@ pub fn lex(reader: &mut (impl Read + Seek)) -> Option<Token> {
                 match c[0] {
                     b'(' => { return Some(Token::LeftParen); },
                     b')' => { return Some(Token::RightParen); },
-                    b' ' => {},
+                    b' ' | b'\n' => {},
                     _ => {
                         token_bytes.push(c[0]);
                         return lex_chars(reader, &mut token_bytes);
@@ -50,7 +57,7 @@ fn lex_chars(reader: &mut (impl Read + Seek), token_bytes: &mut Vec<u8>) -> Opti
     loop {
         if let Ok(_) = reader.read(&mut c) {
             match c[0] {
-                b'(' | b')' | b' ' => {
+                b'(' | b')' | b' ' | b'\n' => {
                     reader.seek(SeekFrom::Current(-1)).unwrap();
                     return make_token!(token_bytes);                                    
                 },

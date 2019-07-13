@@ -14,7 +14,7 @@ fn main() {
     // }
     let mut p = parser::Parser::new();
     if let Some(cst) = p.parse(&mut file) {
-        println!("{:?}", cst);
-        println!("{:?}", module_maker::make_module(cst));
+        println!("CST:    {:?}", cst);
+        println!("Module: {:?}", module_maker::make_module(cst));
     }
 }
