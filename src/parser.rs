@@ -74,11 +74,13 @@ impl Parser {
             Token::Module | 
             Token::ValType(_) |
             Token::Type | 
+            Token::Local | 
             Token::Func | 
             Token::Param | 
             Token::FuncResult | 
             Token::Import | 
             Token::Name(_) | 
+            Token::Text(_) | 
             Token::Symbol(_) => {                
                 let r = Some(Tree::Leaf(self.lookahead.clone()));
                 self.consume(reader);

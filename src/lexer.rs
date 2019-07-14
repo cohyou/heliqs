@@ -9,6 +9,7 @@ macro_rules! make_token {
                 "module" => Some(Token::Module),
                 "import" => Some(Token::Import),
                 "type" => Some(Token::Type),
+                "local" => Some(Token::Local),
                 "func" => Some(Token::Func),
                 "param" => Some(Token::Param),
                 "result" => Some(Token::FuncResult),
@@ -16,8 +17,10 @@ macro_rules! make_token {
                 "i64" => Some(Token::ValType(ValType::I64)),
                 "f32" => Some(Token::ValType(ValType::F32)),
                 "f64" => Some(Token::ValType(ValType::F64)),
-                _ if $bytes[0] == b'$' => Some(Token::Name(s[1..].to_string())),
-                _ => Some(Token::Symbol(s)),
+                _ if $bytes[0] == b'$' => Some(Token::Name(s[1..].to_string())),                
+                _ => {
+                    Some(Token::Symbol(s))
+                },
             }                    
         } else {
             None
@@ -37,6 +40,14 @@ pub fn lex(reader: &mut (impl Read + Seek)) -> Option<Token> {
                     b'(' => { return Some(Token::LeftParen); },
                     b')' => { return Some(Token::RightParen); },
                     b' ' | b'\n' => {},
+                    b'\"' => {
+                        // stringの開始
+                        while reader.read(&mut c).expect("lex: EOF") > 0 && c[0] != b'\"' {
+                            token_bytes.push(c[0])
+                        }                        
+                        let s = String::from_utf8(token_bytes.to_vec()).unwrap();
+                        return Some(Token::Text(s))
+                    },
                     _ => {
                         token_bytes.push(c[0]);
                         return lex_chars(reader, &mut token_bytes);
