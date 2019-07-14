@@ -1,4 +1,5 @@
-use core::{Token, Tree, CST, Module, Func, FuncType, TypeUse, Import, ImportDesc};
+use core::{Token, Tree, CST, Module, Func, FuncType, TypeUse, Import, ImportDesc, Instr, Start
+};
 
 macro_rules! err {
     ($message: expr) => {
@@ -10,64 +11,52 @@ macro_rules! err {
 pub fn make_module(cst: CST) -> Option<Module> {
     let mut module = Module::new();
 
-    match cst {
-        Tree::Node(v) => {
-            match &v[0] {
-                Tree::Node(vv) => {
-                    let mut pos = 0;
-                    
-                    if vv.len() > 0 && vv[pos] == Tree::Leaf(Token::Module) {
-                        pos += 1;
-                        // 通常のモジュール                        
+    let v = cst.expect_node("make_module cst is not node");
+    let vv = v[0].expect_node("make_module v is not node");
+    let mut pos = 0;
+    
+    if vv.len() > 0 && vv[pos] == Tree::Leaf(Token::Module) {
+        pos += 1;
+        // 通常のモジュール                        
 
-                        if let Tree::Leaf(Token::Name(n)) = &vv[1] {
-                            module.id = Some(n.clone());
-                            pos += 1;
-                        }
+        // module id なくてもいい
+        if let Tree::Leaf(Token::Name(n)) = &vv[1] {
+            module.id = Some(n.clone());
+            pos += 1;
+        }
 
-                        for module_field in &vv[pos..] {
-                            // println!("module_field: {:?}", module_field);                            
-                            if let Tree::Node(vvv) = module_field {
-                                match &vvv[0] {                                    
-                                    Tree::Leaf(Token::Type) => {
-                                        let pos = 1;
-                                        // type id は一旦無視
+        for module_field in &vv[pos..] {
+            // println!("module_field: {:?}", module_field);                            
+            let vvv = module_field.expect_node("module読込時エラー");
 
-                                        if let Some(functype) = make_functype(&vvv[pos]) {
-                                            module.types.push(functype);
-                                        }
-                                    },
+            match &vvv[0].expect_leaf("module nodeの最初がkeywordではない") {                                    
+                Token::Type => {
+                    let pos = 1;
+                    // type id は一旦無視
 
-                                    Tree::Leaf(Token::Import) => {
-                                        let import = make_import(&module_field).expect("import作れず");
-                                        module.imports.push(import);
-                                    },
-
-                                    Tree::Leaf(Token::Func) => {
-                                        if let Some(func) = make_func(&module_field) {
-                                            module.funcs.push(func);
-                                        } else {
-                                            // 何かfuncを読んでいる時にエラー
-                                            ;
-                                        }
-                                    },
-
-                                    _ => {},
-                                }
-                            } else {
-                                // これは構文エラー。
-                                // name以降のmodulefieldsは全てlistで構成されているはずなので
-                                ;                            
-                            }
-                        }
-
-                        return Some(module);
-                    }
+                    make_functype(&vvv[pos]).map(|functype| {
+                        module.types.push(functype);
+                    });
                 },
+
+                Token::Import => {
+                    let import = make_import(&module_field).expect("import作れず");
+                    module.imports.push(import);
+                },
+
+                Token::Func => {
+                    make_func(&module_field).map(|func| {
+                        module.funcs.push(func);
+                    });
+                },
+
+                Token::Start => { module.start = make_start(&module_field); },
+
                 _ => {},
             }
-        },
-        _ => {},
+        }
+
+        return Some(module);
     }
 
     None    
@@ -209,23 +198,81 @@ fn make_func(cst: &CST) -> Option<Func> {
     });
 
     // ローカル変数宣言
-    for elem in &v[pos..] {
-        println!("make_func elem: {:?}", elem);
+    loop {
+        if v.len() <= pos { break; }
 
-        if let Tree::Node(local_variable) = elem {
-            if local_variable[0] == Tree::Leaf(Token::Local) {
-                if let Tree::Leaf(Token::ValType(valtype)) = &local_variable[1] {
-                    func.locals.push(valtype.clone());
-                } else {
-                    err!("func ローカル宣言で'local'の後にValTypeがこない");    
-                }
+        // println!("make_func elem: {:?}", v[pos]);
+        if let Tree::Node(local_variable) = &v[pos] {
+            
+            if local_variable[0].match_token(Token::Local) {
+                let vt = local_variable[1].expect_valtype("make_func ローカル宣言で'local'の後にValTypeがこない");
+                func.locals.push(vt);
             } else {
-                err!("func ローカル宣言で'local'から始まってない");                
+                err!("make_func ローカル宣言で'local'から始まってない");
             }
         } else {
-            err!("func ローカル宣言があるべき場所にこない");
+            break;
         }
+
+        pos += 1;
     }                
 
+    // isntr
+    loop {
+        if v.len() <= pos { break; }
+
+        make_instr(&v[pos..]).map(|instrs| {
+            func.body.instrs = instrs;
+        });
+
+        pos += 1;        
+        break;
+    }
+
     Some(func)
+}
+
+fn make_instr(csts: &[CST]) -> Option<Vec<Instr>> {
+    // println!("make_instr cst: {:?}", csts);
+
+    let mut instrs = vec![]; 
+
+    let mut pos = 0;
+    loop {
+        if csts.len() <= pos { break; }
+
+        match &csts[pos] {
+            Tree::Leaf(t) => {
+                match t {
+                    Token::Call => {
+                        let n = csts[pos+1].expect_symbol("Instr call funcidxが取れない");
+                        let res = n.parse::<u32>().map(|nn| {
+                            instrs.push(Instr::Call(nn));
+                            pos += 1;
+                        });
+                    },
+                    _ => {},
+                }                
+            },
+            Tree::Node(_) => {
+                // fold exprはまだ
+            },
+        }        
+
+        pos += 1;
+    }
+
+    Some(instrs)
+}
+
+fn make_start(cst: &CST) -> Option<Start> {
+    println!("make_start cst: {:?}", cst);
+    let mut start = Start::default();
+
+    let v = cst.expect_node("make_start 要素が取れない");
+    // v[0]はチェック済み
+    let n = v[1].expect_symbol("make_start funcidx取れない");
+    start.func = n.parse::<u32>().expect("make_start funcidxが数値じゃない");
+    
+    Some(start)
 }

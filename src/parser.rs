@@ -72,15 +72,21 @@ impl Parser {
                 self.parse_list(reader)
             },
             Token::Module | 
-            Token::ValType(_) |
+            
             Token::Type | 
-            Token::Local | 
             Token::Func | 
+            Token::Import | 
+            Token::Start | 
+
+            Token::Local | 
             Token::Param | 
             Token::FuncResult | 
-            Token::Import | 
+
+            Token::Call |
+
+            Token::ValType(_) |
             Token::Name(_) | 
-            Token::Text(_) | 
+            Token::Text(_) |             
             Token::Symbol(_) => {                
                 let r = Some(Tree::Leaf(self.lookahead.clone()));
                 self.consume(reader);

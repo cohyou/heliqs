@@ -1,4 +1,3 @@
-use std::fmt::Debug;
 
 // valtype ::= i32 | i64 | f32 | f64
 #[derive(Debug, PartialEq, Clone)]
@@ -19,13 +18,20 @@ impl Default for ValType {
 pub enum Token {
     LeftParen,
     RightParen,
+
     Module,
+
     Import,
     Type,
-    Local,
     Func,
+    Start,
+
+    Local,    
     Param,
     FuncResult,
+
+    Call,
+    
     ValType(ValType),
     Symbol(String),
     Name(String), // $で始まる

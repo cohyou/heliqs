@@ -21,11 +21,12 @@ fn main() {
             println!();
             println!("Module: {}", module.id.unwrap());
             println!("types: {:?}", module.types);
-            println!("types: {:?}", module.imports);
+            println!("imports: {:?}", module.imports);            
             println!("funcs:");
             for func in module.funcs {
                 println!("    {:?}", func);
             }
+            println!("start: {:?}", module.start);
         }        
     }    
 }

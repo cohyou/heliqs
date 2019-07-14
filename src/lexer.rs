@@ -5,23 +5,31 @@ macro_rules! make_token {
     ($bytes:ident) => {
         if !$bytes.is_empty() {
             let s = String::from_utf8($bytes.to_vec()).unwrap();
-            match s.as_ref() {
-                "module" => Some(Token::Module),
-                "import" => Some(Token::Import),
-                "type" => Some(Token::Type),
-                "local" => Some(Token::Local),
-                "func" => Some(Token::Func),
-                "param" => Some(Token::Param),
-                "result" => Some(Token::FuncResult),
-                "i32" => Some(Token::ValType(ValType::I32)),
-                "i64" => Some(Token::ValType(ValType::I64)),
-                "f32" => Some(Token::ValType(ValType::F32)),
-                "f64" => Some(Token::ValType(ValType::F64)),
-                _ if $bytes[0] == b'$' => Some(Token::Name(s[1..].to_string())),                
+            let t = match s.as_ref() {
+                "module" => Token::Module,
+
+                "import" => Token::Import,
+                "type" => Token::Type,                
+                "func" => Token::Func,
+                "start" => Token::Start,
+
+                "local" => Token::Local,
+                "param" => Token::Param,
+                "result" => Token::FuncResult,
+
+                "i32" => Token::ValType(ValType::I32),
+                "i64" => Token::ValType(ValType::I64),
+                "f32" => Token::ValType(ValType::F32),
+                "f64" => Token::ValType(ValType::F64),
+
+                "call" => Token::Call,
+
+                _ if $bytes[0] == b'$' => Token::Name(s[1..].to_string()),
                 _ => {
-                    Some(Token::Symbol(s))
+                    Token::Symbol(s)
                 },
-            }                    
+            };
+            Some(t)
         } else {
             None
         }        

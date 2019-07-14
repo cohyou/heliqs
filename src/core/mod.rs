@@ -1,12 +1,27 @@
-pub mod token;
-
 use std::fmt::Debug;
+
+mod token;
+mod indices;
+mod instr;
+
 pub use self::token::*;
+pub use self::indices::*;
+pub use self::instr::*;
 
 #[derive(PartialEq, Clone)]
 pub enum Tree<T> {
     Leaf(T),
     Node(Vec<Tree<T>>),
+}
+
+macro_rules! expecting {
+    ($s:ident, $p:pat, $r:expr, $m: expr) => {
+        if let $p = $s {
+            $r
+        } else {
+            panic!("{} {:?}", $m, $s);
+        }        
+    };
 }
 
 pub type CST = Tree<Token>;
@@ -29,9 +44,22 @@ impl CST {
     }
 
     pub fn expect_symbol(&self, message: &'static str) -> String {
-        if let Tree::Leaf(Token::Symbol(s)) = self { s.clone() } else {
-            let s = format!("{} {:?}", message, self);
-            panic!(s);
+        expecting!(self, Tree::Leaf(Token::Symbol(s)), s.clone(), message)
+    }
+
+    pub fn expect_name(&self, message: &'static str) -> String {
+        expecting!(self, Tree::Leaf(Token::Name(n)), n.clone(), message)
+    }
+
+    pub fn expect_valtype(&self, message: &'static str) -> ValType {
+        expecting!(self, Tree::Leaf(Token::ValType(vt)), vt.clone(), message)
+    }
+
+    pub fn match_token(&self, token: Token) -> bool {
+        if let Tree::Leaf(t) = self {
+            t == &token
+        } else {
+            false
         }
     }
 }
@@ -49,28 +77,18 @@ impl Debug for CST {
     }
 }
 
-
-pub type TypeIndex = u32;
-type FuncIndex = u32;
-
-
 // Function types classify the signature of functions, 
 // mapping a vector of parameters to a vector of results, written as follows.
 // ということで、パラメータ列から結果列への写像、らしいです。
 // ひとまず、vecのタプルとして持ちます。
 pub type FuncType = (Vec<ValType>, Vec<ValType>);
 
-#[derive(Debug)]
-enum Instr {
-    Call(FuncIndex),
-}
-
 // expr ::= instr* end
 // expressionの長さはlimitationとして実装ごとに決定できる
 // ひとまず、usizeにしておこう
 #[derive(Debug)]
-struct Expr {
-    instrs: Vec<Instr>
+pub struct Expr {
+    pub instrs: Vec<Instr>
 }
 
 // テキストフォーマット独自のstruct
@@ -87,7 +105,7 @@ pub struct TypeUse(pub TypeIndex); // 本来はContextが必要
 pub struct Func {
     pub func_type: TypeUse, // type: typeuse 
     pub locals: Vec<ValType>, // locals: vec(valtype)
-    body: Expr, // body: expr
+    pub body: Expr, // body: expr
 }
 
 impl Func {
@@ -146,12 +164,18 @@ pub struct Import {
     pub desc: ImportDesc,
 }
 
+#[derive(Debug, Default)]
+pub struct Start {
+    pub func: FuncIndex,
+}
+
 #[derive(Debug)]
 pub struct Module {
     pub id: Option<String>,
     pub types: Vec<FuncType>,
     pub imports: Vec<Import>,
     pub funcs: Vec<Func>,
+    pub start: Option<Start>,
 }
 
 impl Module {
@@ -161,6 +185,7 @@ impl Module {
             types: vec![],
             imports: vec![],
             funcs: vec![],
+            start: None,            
         }
     }
 }
