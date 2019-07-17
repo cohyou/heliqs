@@ -18,7 +18,7 @@ fn main() {
         // println!("CST:    {:?}", cst);
         if let Some(module) = module_maker::make_module(cst) {
             println!();
-            println!("-------RESULT--------");
+            println!("---- ---- RESULT ---- ----");
             println!();
             println!("Module: {:?}", module.id);
             println!("types: {:?}", module.types);

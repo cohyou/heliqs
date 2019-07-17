@@ -1,3 +1,4 @@
+use std::rc::Rc;
 use core::{FuncType, Func, Mutablity, Instr, Module};
 
 pub enum Val {
@@ -12,12 +13,28 @@ enum Result {
     Trap,
 }
 
+pub enum StoreInst {
+    Func(FuncInst),
+    // Table(TableInst),
+    // Mem(MemInst),
+    // Global(GlobalInst),
+}
+
 #[derive(Default)]
 pub struct Store {
-    funcs: Vec<FuncInst>,
-    // tables: Vec<TableInst>,
-    // mems: Vec<MemInst>,
-    // globals: Vec<GlobalInst>,
+    insts: Vec<StoreInst>,
+}
+
+impl Store {
+    fn funcs(&self) -> Vec<&FuncInst> {
+        let mut res = vec![];
+        for inst in self.insts.iter() {
+            if let StoreInst::Func(func_inst) = inst {
+                res.push(func_inst);
+            }
+        }
+        res
+    }
 }
 
 type Addr = usize; // 仕様は自由なのでひとまずusize
@@ -39,7 +56,7 @@ pub struct ModuleInst {
 type HostFunc = String; // primitiveは関数名をStringで持つことにします
 
 enum FuncInst {
-    Normal { func_type: FuncType, module: ModuleInst, code: Func},
+    Normal { func_type: FuncType, module: Rc<ModuleInst>, code: Func},
     Host { func_type: FuncType, host_code: HostFunc },
 }
 
@@ -78,14 +95,36 @@ pub fn instantiate(store: Store, module: &Module, extern_vals: Vec<ExternVal>) -
     allocate_module(store, module, extern_vals, vec![])
 }
 
+
+fn allocate_func(store: &mut Store, func: Func, module_inst: ModuleInst) -> FuncAddr {
+    // 1. Let "func" be the <function> to allocate "moduleinst" its <module instance>.
+
+    // 2. Let "a" be the first free <function address> in S.
+    let address = store.insts.len() as FuncAddr;
+
+    // 3. Let "functype" be the <function type> "moduleinst".'types'["func".'type'].
+    let func_type = module_inst.types[func.func_type.type_index()];
+
+    // 4. Let "funcinst" be the <function instance> {'type' "functype", 'module' "moduleinst" 'code' "func"}.
+    let func_inst = FuncInst::Normal { func_type: func_type, module: Rc::new(module_inst), code: func };
+
+    // 5. Append "funcinst" to the 'funcs' of S.
+    store.insts.push(StoreInst::Func(func_inst));
+
+    // 取得したアドレスを返す
+    address
+}
+
 pub fn allocate_module(store: Store, module: &Module, extern_vals: Vec<ExternVal>, vals: Vec<Val>) -> ModuleInst {
     let mut module_inst = ModuleInst::default();
 
+    // set types
     module_inst.types = module.types.clone();
 
-let num = module.funcs.len();
-
-    module_inst.func_addrs = vec![];
+    // set funcinsts and funcaddrs
+    for func in module.funcs {
+        module_inst.func_addrs.push(allocate_func(&mut store, func, module_inst));
+    }
 
     module_inst
 }

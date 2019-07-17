@@ -101,6 +101,14 @@ struct Context {
 #[derive(Debug, Default)]
 pub struct TypeUse(pub TypeIndex); // 本来はContextが必要
 
+impl TypeUse {
+    pub fn type_index(&self) -> usize {
+        // 現在は直接.0をとるだけだが、
+        // Contextが付いた時に型の名前からもindexを取れるようにしたい
+        self.0 as usize
+    }
+}
+
 #[derive(Debug)]
 pub struct Func {
     pub func_type: TypeUse, // type: typeuse 
