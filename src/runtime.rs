@@ -1,4 +1,5 @@
 use std::rc::{Rc, Weak};
+use std::cell::RefCell;
 use core::{FuncType, Func, Mutablity, Instr, Module};
 
 pub enum Val {
@@ -13,19 +14,19 @@ enum Result {
     Trap,
 }
 
-pub enum StoreInst<'a> {
-    Func(FuncInst<'a>),
+pub enum StoreInst {
+    Func(FuncInst),
     // Table(TableInst),
     // Mem(MemInst),
     // Global(GlobalInst),
 }
 
 #[derive(Default)]
-pub struct Store<'a> {
-    insts: Vec<StoreInst<'a>>,
+pub struct Store {
+    insts: Vec<StoreInst>,
 }
 
-impl<'a> Store<'a> {
+impl Store {
     fn funcs(&self) -> Vec<&FuncInst> {
         let mut res = vec![];
         for inst in self.insts.iter() {
@@ -55,8 +56,8 @@ pub struct ModuleInst {
 
 type HostFunc = String; // primitiveは関数名をStringで持つことにします
 
-enum FuncInst<'a> {
-    Normal { func_type: FuncType, module: &'a ModuleInst, code: Func }, // module instanceは関数で取得するようにします
+enum FuncInst {
+    Normal { func_type: FuncType, module: Rc<RefCell<ModuleInst>>, code: Func }, // module instanceは関数で取得するようにします
     Host { func_type: FuncType, host_code: HostFunc },
 }
 
@@ -92,25 +93,25 @@ struct Stack {
 
 struct Frame {
     locals: Vec<Val>,
-    module: ModuleInst,
+    module: Rc<RefCell<ModuleInst>>,
 }
 
 struct Activation(u32, Frame);
 
-struct Runtime<'a> {
-    store: Store<'a>,    
-    module_inst: ModuleInst,
+struct Runtime {
+    store: Store,    
+    module_inst: Rc<RefCell<ModuleInst>>,
 }
 
-impl<'a> Runtime<'a> {
-    fn new(module: &Module, store: Store<'a>) -> Runtime<'a> {
-        let mut module_inst = ModuleInst::default();
+impl Runtime {
+    fn new(module: &Module, mut store: Store) -> Runtime {
+        let mut module_inst = Rc::new(RefCell::new(ModuleInst::default()));
 
-        module_inst.types = module.types.clone();
+        module_inst.borrow_mut().types = module.types.clone();
 
         for func in module.funcs.iter() {
-            let address = allocate_func(&mut store, func, &module_inst);
-            module_inst.func_addrs.push(address);            
+            let address = allocate_func(&mut store, func, module_inst.clone());
+            module_inst.borrow_mut().func_addrs.push(address);            
         }
 
         Runtime {
@@ -143,7 +144,7 @@ impl<'a> Runtime<'a> {
     // }
 }
 
-pub fn instantiate(store: Store, module: &Module, extern_vals: Vec<ExternVal>) -> ModuleInst {
+pub fn instantiate(store: Store, module: &Module, extern_vals: Vec<ExternVal>) -> Rc<RefCell<ModuleInst>> {
     // allocate_module(store, module, extern_vals, vec![])    
 
     let runtime = Runtime::new(module, store);
@@ -168,7 +169,7 @@ pub fn instantiate(store: Store, module: &Module, extern_vals: Vec<ExternVal>) -
 //     module_inst
 // }
 
-fn allocate_func<'a>(store: &mut Store<'a>, func: &Func, module_inst: &'a ModuleInst) -> FuncAddr {
+fn allocate_func(store: &mut Store, func: &Func, module_inst: Rc<RefCell<ModuleInst>>) -> FuncAddr {
     // 1. Let "func" be the <function> to allocate "moduleinst" its <module instance>.
 
     // 2. Let "a" be the first free <function address> in S.
@@ -176,10 +177,10 @@ fn allocate_func<'a>(store: &mut Store<'a>, func: &Func, module_inst: &'a Module
 
     // 3. Let "functype" be the <function type> "moduleinst".'types'["func".'type'].
     // let modinst = module_inst.upgrade().expect("molude instのupgradeに失敗");
-    let func_type = &module_inst.types[func.func_type.type_index()];
+    let func_type = module_inst.borrow_mut().types[func.func_type.type_index()].clone();
 
     // 4. Let "funcinst" be the <function instance> {'type' "functype", 'module' "moduleinst" 'code' "func"}.
-    let func_inst = FuncInst::Normal { func_type: func_type.clone(), module: module_inst, code: func.clone() };
+    let func_inst = FuncInst::Normal { func_type: func_type.clone(), module: module_inst.clone(), code: func.clone() };
 
     // 5. Append "funcinst" to the 'funcs' of S.
     store.insts.push(StoreInst::Func(func_inst));
