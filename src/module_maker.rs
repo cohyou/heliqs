@@ -140,31 +140,32 @@ fn make_import(cst: &CST) -> Option<Import> {
 
     let v = cst.expect_node("make_import not node");
 
-    let mut imp = Import::default();
     slice_get!(v1, v, 1, "make_import");
-    imp.module_name = v1.expect_text("make_import モジュール名が取れず");    
-    imp.element_name = v[2].expect_text("make_import 要素名が取れず");
+
+    let module_name = v1.expect_text("make_import モジュール名が取れず");    
+    let element_name = v[2].expect_text("make_import 要素名が取れず");
 
     make_import_desc(&v[3]).map(|imp_desc| {
-        imp.desc = imp_desc;
-        imp
+        Import {
+            module_name: module_name,
+            element_name: element_name,
+            desc: imp_desc,
+        }        
     })
 }
 
 fn make_import_desc(cst: &CST) -> Option<ImportDesc> {
-    let mut imp_desc = ImportDesc::default();
-
     let desc_node = cst.expect_node("make_import_desc 要素が取れない");
-    match desc_node[0].expect_leaf("make_import_desc 要素の最初が間違ってる") {
+    let t = desc_node[0].expect_leaf("make_import_desc 要素の最初が間違ってる");
+
+    match t {
         Token::Func => {
             make_typeuse(&desc_node[1]).map(|typeuse| {
-                imp_desc.func = typeuse;
-            });
+                ImportDesc::Func(typeuse)
+            })
         },
-        _ => {},
+        _ => None,
     }
-
-    Some(imp_desc)
 }
 
 fn make_typeuse(cst: &CST) -> Option<TypeUse> {

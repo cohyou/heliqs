@@ -157,15 +157,15 @@ impl Default for Mutablity {
 #[derive(Debug, Default)]
 pub struct GlobalType(Mutablity, ValType);
 
-#[derive(Debug, Default)]
-pub struct ImportDesc {
-    pub func: TypeUse,
-    pub table: TableType,
-    pub mem: MemType,
-    pub global: GlobalType,
+#[derive(Debug)]
+pub enum ImportDesc {
+    Func(TypeUse),
+    Table(TableType),
+    Mem(MemType),
+    Global(GlobalType),
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Import {
     pub module_name: String,
     pub element_name: String,
