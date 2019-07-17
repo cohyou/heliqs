@@ -135,19 +135,19 @@ pub struct MemType {
 }
 
 #[derive(Debug)]
-enum MutablityType {
+pub enum Mutablity {
     Const,
     Var,
 }
 
-impl Default for MutablityType {
+impl Default for Mutablity {
     fn default() -> Self {
-        MutablityType::Const
+        Mutablity::Const
     }
 }
 
 #[derive(Debug, Default)]
-pub struct GlobalType(MutablityType, ValType);
+pub struct GlobalType(Mutablity, ValType);
 
 #[derive(Debug, Default)]
 pub struct ImportDesc {

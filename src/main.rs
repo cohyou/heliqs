@@ -2,6 +2,7 @@ mod core;
 mod lexer;
 mod parser;
 mod module_maker;
+mod runtime;
 
 use std::fs::File;
 
@@ -19,15 +20,21 @@ fn main() {
             println!();
             println!("-------RESULT--------");
             println!();
-            println!("Module: {}", module.id.unwrap());
+            println!("Module: {:?}", module.id);
             println!("types: {:?}", module.types);
             println!("imports: {:?}", module.imports);            
             println!("funcs:");
-            for func in module.funcs {
+            for func in &module.funcs {
                 println!("    {:?}", func);
             }
             println!("start: {:?}", module.start);
-        }        
+
+            println!();
+
+            let store = runtime::Store::default();
+            let extern_vals = vec![];
+            println!("module instance: {:?}", runtime::instantiate(store, &module, extern_vals));
+        }
     }    
 }
 
