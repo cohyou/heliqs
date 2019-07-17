@@ -2,7 +2,7 @@
 
 use super::indices::FuncIndex;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Instr {
     Call(FuncIndex),
 }

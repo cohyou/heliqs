@@ -86,7 +86,7 @@ pub type FuncType = (Vec<ValType>, Vec<ValType>);
 // expr ::= instr* end
 // expressionの長さはlimitationとして実装ごとに決定できる
 // ひとまず、usizeにしておこう
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Expr {
     pub instrs: Vec<Instr>
 }
@@ -98,7 +98,7 @@ struct Context {
     typedefs: Vec<FuncType>, // typedefs functype*
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct TypeUse(pub TypeIndex); // 本来はContextが必要
 
 impl TypeUse {
@@ -109,7 +109,7 @@ impl TypeUse {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Func {
     pub func_type: TypeUse, // type: typeuse 
     pub locals: Vec<ValType>, // locals: vec(valtype)

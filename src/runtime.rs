@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 use core::{FuncType, Func, Mutablity, Instr, Module};
 
 pub enum Val {
@@ -56,10 +56,15 @@ pub struct ModuleInst {
 type HostFunc = String; // primitiveは関数名をStringで持つことにします
 
 enum FuncInst {
-    Normal { func_type: FuncType, module: Rc<ModuleInst>, code: Func},
+    Normal { func_type: FuncType, code: Func }, // module instanceは関数で取得するようにします
     Host { func_type: FuncType, host_code: HostFunc },
 }
 
+impl FuncInst {
+    fn module_instance() -> &ModuleInst {
+        
+    }
+}
 // type FuncElem = Option<FuncAddr>;
 // struct TableInst { elem: Vec<FuncElem>, max: Option<u32> }
 
@@ -95,6 +100,23 @@ pub fn instantiate(store: Store, module: &Module, extern_vals: Vec<ExternVal>) -
     allocate_module(store, module, extern_vals, vec![])
 }
 
+pub fn allocate_module<'a>(mut store: Store, module: &Module, extern_vals: Vec<ExternVal>, vals: Vec<Val>) -> ModuleInst {
+    let mut module_inst = ModuleInst::default();
+
+    // set types
+    module_inst.types = module.types.clone();
+
+
+    // let rc = Rc::new(&module_inst);
+    // let weak = Rc::downgrade(&rc);
+
+    // set funcinsts and funcaddrs
+    for func in module.funcs {        
+        module_inst.func_addrs.push(allocate_func(&mut store, func, module_inst));
+    }
+
+    module_inst
+}
 
 fn allocate_func(store: &mut Store, func: Func, module_inst: ModuleInst) -> FuncAddr {
     // 1. Let "func" be the <function> to allocate "moduleinst" its <module instance>.
@@ -103,28 +125,15 @@ fn allocate_func(store: &mut Store, func: Func, module_inst: ModuleInst) -> Func
     let address = store.insts.len() as FuncAddr;
 
     // 3. Let "functype" be the <function type> "moduleinst".'types'["func".'type'].
-    let func_type = module_inst.types[func.func_type.type_index()];
+    // let modinst = module_inst.upgrade().expect("molude instのupgradeに失敗");
+    let func_type = &module_inst.types[func.func_type.type_index()];
 
     // 4. Let "funcinst" be the <function instance> {'type' "functype", 'module' "moduleinst" 'code' "func"}.
-    let func_inst = FuncInst::Normal { func_type: func_type, module: Rc::new(module_inst), code: func };
+    let func_inst = FuncInst::Normal { func_type: func_type.clone(), module: module_inst, code: func.clone() };
 
     // 5. Append "funcinst" to the 'funcs' of S.
     store.insts.push(StoreInst::Func(func_inst));
 
     // 取得したアドレスを返す
     address
-}
-
-pub fn allocate_module(store: Store, module: &Module, extern_vals: Vec<ExternVal>, vals: Vec<Val>) -> ModuleInst {
-    let mut module_inst = ModuleInst::default();
-
-    // set types
-    module_inst.types = module.types.clone();
-
-    // set funcinsts and funcaddrs
-    for func in module.funcs {
-        module_inst.func_addrs.push(allocate_func(&mut store, func, module_inst));
-    }
-
-    module_inst
 }
