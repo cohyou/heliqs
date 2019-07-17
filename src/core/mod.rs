@@ -172,7 +172,7 @@ pub struct Import {
     pub desc: ImportDesc,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct Start {
     pub func: FuncIndex,
 }

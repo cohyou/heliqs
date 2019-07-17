@@ -99,11 +99,46 @@ struct Frame {
 struct Activation(u32, Frame);
 
 
-pub fn instantiate(store: Store, module: &Module, extern_vals: Vec<ExternVal>) -> Rc<RefCell<ModuleInst>> {
-    allocate_module(store, module, extern_vals, vec![])
+pub fn instantiate(mut store: Store, module: &Module, extern_vals: Vec<ExternVal>) {
+    // 6. Let "moduleinst" be a new module instance <allocated> from "module" in Store S with imports "externval^n" and
+    // global initializer values "val^*", and let S' be extended store produced by module allocation.
+    let module_inst = allocate_module(&mut store, module, extern_vals, vec![]);
+
+    // 15. If the <start function> "module".'start' is not empty, then:
+    if module.start.is_some() {
+        // (a) Assert: due to <validation>, "moduleinst".'funcaddrs'["module".'start'.'func'] exists.
+        
+        // (b) Let "funcaddr" be the <function address> "moduleinst".'funcaddrs'["module".'start'.'func'].
+        let func_addr = module_inst.borrow().func_addrs[module.start.clone().unwrap().func as usize];
+
+        // (c) <Invoke> the function instance at "funcaddr".
+        invoke(&store, func_addr);
+    }
 }
 
-pub fn allocate_module(mut store: Store, module: &Module, extern_vals: Vec<ExternVal>, vals: Vec<Val>) -> Rc<RefCell<ModuleInst>> {
+fn invoke(store: &Store, func_addr: FuncAddr) {
+    // 2. Let f be the <function instance>, S.'funcs'[a].
+    let f = store.funcs()[func_addr];
+
+    // 3. Let [t_1^n] -> [t_2^m] be the <function type> f.'type'.
+    if let FuncInst::Normal { func_type: ft, code: code, ..} = f {
+
+        // 5. Let "t^*" be the list of <value types> f.'code'.'locals'.
+        let locals = &code.locals;
+
+        // 6. Let "instr^*" be the expression f.'code'.'body'.
+        let instrs = &code.body;
+
+        // 8. Pop the values "val^n" from the stack.
+    
+    } else {
+        panic!("普通の関数しかinvokeしません");
+    }
+    
+
+}
+
+fn allocate_module(store: &mut Store, module: &Module, extern_vals: Vec<ExternVal>, vals: Vec<Val>) -> Rc<RefCell<ModuleInst>> {
     let module_inst = Rc::new(RefCell::new(ModuleInst::default()));
 
     // set types
@@ -111,7 +146,7 @@ pub fn allocate_module(mut store: Store, module: &Module, extern_vals: Vec<Exter
 
     // set funcinsts and funcaddrs
     for func in module.funcs.iter() {
-        let address = allocate_func(&mut store, func, module_inst.clone());
+        let address = allocate_func(store, func, module_inst.clone());
         module_inst.borrow_mut().func_addrs.push(address);            
     }
 
