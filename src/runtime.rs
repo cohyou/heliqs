@@ -123,7 +123,7 @@ impl Runtime {
             let func_addr = module_inst.borrow().func_addrs[module.start.clone().unwrap().func as usize];
 
             // (c) <Invoke> the function instance at "funcaddr".
-            self.invoke(func_addr);
+            self.invoke_function(func_addr);
         }
     }
 
@@ -162,7 +162,7 @@ impl Runtime {
         address
     }
 
-    fn invoke(&mut self, func_addr: FuncAddr) {
+    fn invoke_function(&mut self, func_addr: FuncAddr) {
         // 2. Let f be the <function instance>, S.'funcs'[a].
         let f = self.store.funcs()[func_addr];
 
@@ -214,7 +214,7 @@ impl Runtime {
         }    
     }
 
-    fn execute_instr(&self, instr: Instr) {
+    fn execute_instr(&mut self, instr: Instr) {
         match instr {
             Instr::Block(result_type, instrs) => {
                 self.execute_block(result_type, &instrs);
@@ -223,7 +223,7 @@ impl Runtime {
         }
     }
 
-    fn execute_block(&self, result_type: ResultType, instrs: &Expr) {
+    fn execute_block(&mut self, result_type: ResultType, expr: &Expr) {
         // 1. Let "n" be the arity |t^?| of the <result type> "t^?".
         let n = result_type.len();
 
@@ -231,5 +231,41 @@ impl Runtime {
         let label = Label(n.try_into().unwrap(), vec![]);
 
         // 3. <Enter> the block "instr^*" with label L.
+        self.enter_exprs(expr, label);
+    }
+
+    fn enter_exprs(&mut self, expr: &Expr, label: Label) {
+        // 1. Push L to the stack.
+        self.label_stack.push(label);
+
+        // 2. Jump to the start of the instruction sequence <instr^*>.
+        for instr in expr.instrs.iter() {
+            self.execute_instr(instr.clone());
+        }
+
+        self.exit_exprs();
+    }
+
+    /// 実際にはvalueとlabelで別のstackを使っているので、1,2,5の手順は不要。一応やってる
+    fn exit_exprs(&mut self) {
+        // 1. Let m be the number of values on the top of the stack.
+        let m = self.value_stack.len();
+
+        // 2. Pop the values <val^m> from the stack.
+        let mut values = vec![];
+        for _ in 0..m {
+            values.push(self.value_stack.pop().unwrap());
+        }        
+
+        // 3. Assert: due to <validation>, the label L is now on the top of the stack.
+        // 4. Pop the label from the stack.
+        self.label_stack.pop().expect("3. Assert: due to <validation>, the label L is now on the top of the stack.");
+
+        // 5. Push <val^m> back to the stack.
+        for v in values {
+            self.value_stack.push(v);
+        }
+
+        // 6. Jump to the position after the 'end' of the <structured control instruction> associated with the label L.
     }
 }
