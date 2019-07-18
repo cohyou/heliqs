@@ -31,9 +31,9 @@ fn main() {
 
             println!();
 
-            let store = runtime::Store::default();
+            let mut rt = runtime::Runtime::new(None);
             let extern_vals = vec![];
-            println!("module instance: {:?}", runtime::instantiate(store, &module, extern_vals));
+            println!("module instance: {:?}", rt.instantiate(&module, extern_vals));
         }
     }    
 }
