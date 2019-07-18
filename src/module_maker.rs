@@ -1,5 +1,4 @@
-use core::{Token, Tree, CST, Module, Func, FuncType, TypeUse, Import, ImportDesc, Instr, Start
-};
+use core::{Token, Tree, CST, Module, Func, FuncType, TypeUse, Import, ImportDesc, Instr, Start, Val};
 
 macro_rules! err {
     ($message: expr) => {
@@ -219,16 +218,10 @@ fn make_func(cst: &CST) -> Option<Func> {
     }                
 
     // isntr
-    loop {
-        if v.len() <= pos { break; }
-
-        make_instr(&v[pos..]).map(|instrs| {
-            func.body.instrs = instrs;
-        });
-
-        pos += 1;        
-        break;
-    }
+    make_instr(&v[pos..]).map(|instrs| {
+        func.body.instrs = instrs;
+        // println!("func.body.instrs = instrs; {:?}", func.body.instrs.clone());
+    });
 
     Some(func)
 }
@@ -241,10 +234,17 @@ fn make_instr(csts: &[CST]) -> Option<Vec<Instr>> {
     let mut pos = 0;
     loop {
         if csts.len() <= pos { break; }
-
+        // println!("make_instr &csts[pos]: {:?}", &csts[pos]);
         match &csts[pos] {
             Tree::Leaf(t) => {
                 match t {
+                    Token::I32Const => {
+                        let num_str = csts[pos+1].expect_symbol("Instr i32.const 定数値が取れない");
+                        let res = num_str.parse::<u32>().map(|i32_num| {
+                            instrs.push(Instr::I32Const(Val::I32Const(i32_num)));
+                            pos += 1;
+                        });
+                    },
                     Token::Call => {
                         let n = csts[pos+1].expect_symbol("Instr call funcidxが取れない");
                         let res = n.parse::<u32>().map(|nn| {
@@ -262,7 +262,7 @@ fn make_instr(csts: &[CST]) -> Option<Vec<Instr>> {
 
         pos += 1;
     }
-
+    // println!("make_instr instrs: {:?}", &instrs);
     Some(instrs)
 }
 

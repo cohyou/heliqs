@@ -6,6 +6,9 @@ mod runtime;
 
 use std::fs::File;
 
+use core::*;
+use runtime::*;
+
 fn main() {
     let file_name = "a.wat";
     let mut file = File::open(file_name).unwrap();
@@ -30,9 +33,12 @@ fn main() {
             println!("start: {:?}", module.start);
 
             println!();
-
-            let mut rt = runtime::Runtime::new(None);
-            let extern_vals = vec![runtime::ExternVal::Func(1)];
+            let mut store = Runtime::init_store();
+            let func_inst = FuncInst::Host { func_type: (vec![ValType::I32], vec![]), host_code: "log".to_string() };
+            store.insts.push(StoreInst::Func(func_inst));
+            
+            let mut rt = Runtime::new(Some(store));
+            let extern_vals = vec![ExternVal::Func(0)];
             println!("module instance: {:?}", rt.instantiate(&module, extern_vals));
         }
     }    

@@ -32,6 +32,8 @@ pub enum Token {
 
     Call,
     
+    I32Const,
+    
     ValType(ValType),
     Symbol(String),
     Name(String), // $で始まる

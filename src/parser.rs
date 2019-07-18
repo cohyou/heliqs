@@ -85,6 +85,9 @@ impl Parser {
             Token::Call |
 
             Token::ValType(_) |
+
+            Token::I32Const |
+
             Token::Name(_) | 
             Token::Text(_) |             
             Token::Symbol(_) => {                

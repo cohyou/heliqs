@@ -1,6 +1,7 @@
 (module $main
   (type (func))
-  (import "wasi" "log" (func (type 0)))
-  (func $print (type 0) call 1)
-  (start 0)
+  (type (func (param i32)))
+  (import "wasi" "log" (func (type 1)))
+  (func $print (type 0) i32.const 42 call 0)
+  (start 1)
 )

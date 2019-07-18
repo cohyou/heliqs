@@ -1,20 +1,14 @@
 use std::rc::{Rc, Weak};
 use std::cell::RefCell;
 use std::convert::TryInto;
-use core::{FuncType, Func, Mutablity, Instr, Module, ValType, ResultType, Expr};
-
-pub enum Val {
-    I32Const(u32),
-    I64Const(u64),
-    F32Const(f32),
-    F64Const(f64),
-}
+use core::{FuncType, Func, Mutablity, Instr, Module, ValType, ResultType, Expr, Val};
 
 enum Result {
     Vals(Vec<Val>),
     Trap,
 }
 
+#[derive(Debug)]
 pub enum StoreInst {
     Func(FuncInst),
     // Table(TableInst),
@@ -22,9 +16,9 @@ pub enum StoreInst {
     // Global(GlobalInst),
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Store {
-    insts: Vec<StoreInst>,
+    pub insts: Vec<StoreInst>,
 }
 
 impl Store {
@@ -57,7 +51,8 @@ pub struct ModuleInst {
 
 type HostFunc = String; // primitiveは関数名をStringで持つことにします
 
-enum FuncInst {
+#[derive(Debug)]
+pub enum FuncInst {
     Normal { func_type: FuncType, module: Rc<RefCell<ModuleInst>>, code: Func }, // module instanceは関数で取得するようにします
     Host { func_type: FuncType, host_code: HostFunc },
 }
@@ -102,6 +97,10 @@ pub struct Runtime {
 }
 
 impl Runtime {
+    pub fn init_store() -> Store {
+        Store { insts: vec![] }
+    }
+
     pub fn new(store: Option<Store>) -> Runtime {
         let mut runtime = Runtime::default();
         if let Some(store) = store {
@@ -155,12 +154,16 @@ impl Runtime {
         }
 
         // 10. Let "funcaddr_mod^*" be the list of <function addresses> extracted from "externval_im^*" concatenated with "funcaddr^*".        
+        let mut imported_func_addrs = vec![];
         for extern_val in extern_vals {
             if let ExternVal::Func(func_addr) = extern_val {
                 println!("func_addr: {:?}", func_addr);
-                module_inst.borrow_mut().func_addrs.push(func_addr);
+                imported_func_addrs.push(func_addr)
+                // module_inst.borrow_mut().func_addrs.push(func_addr);
             }
         }
+        imported_func_addrs.extend(module_inst.borrow_mut().func_addrs.clone()); // あかん、Cloneあかん
+        module_inst.borrow_mut().func_addrs = imported_func_addrs;
 
         module_inst
     }
@@ -180,66 +183,81 @@ impl Runtime {
 
         // 5. Append "funcinst" to the 'funcs' of S.
         self.store.insts.push(StoreInst::Func(func_inst));
-
+println!("allocate_func address: {:?}", address);
         // 取得したアドレスを返す
         address
     }
 
     fn invoke_function(&mut self, func_addr: FuncAddr) {
         // 2. Let f be the <function instance>, S.'funcs'[a].
+        println!("self.store.funcs():");
+        for func in self.store.funcs() {
+            println!("    {:?}", func);
+        }
+        
         let f = self.store.funcs()[func_addr];
 
         // 3. Let [t_1^n] -> [t_2^m] be the <function type> f.'type'.
-        if let FuncInst::Normal { func_type: ft, module: module_inst, code} = f {
+        println!("invoke_function f: {:?}", f);
+        match f {
+            FuncInst::Normal { func_type: ft, module: module_inst, code} => {
+println!("invoke_function FuncInst::Normal");
+                // 5. Let "t^*" be the list of <value types> f.'code'.'locals'.
+                let local_types = &code.locals;
 
-            // 5. Let "t^*" be the list of <value types> f.'code'.'locals'.
-            let local_types = &code.locals;
+                // 6. Let "instr^*" be the expression f.'code'.'body'.
+                let instrs = &code.body;
 
-            // 6. Let "instr^*" be the expression f.'code'.'body'.
-            let instrs = &code.body;
+                // 8. Pop the values "val^n" from the stack.            
+                let mut stack_values = vec![];
+                for _ in local_types.iter() {
+                    if let Some(v) = self.value_stack.pop() {
+                        stack_values.push(v);
+                    }                
+                }
+                        
+                // 9. Let "val_0^*" be the list of zero values of types "t^*"
+                let mut local_values = vec![];
+                for local_type in local_types {
+                    match local_type {
+                        ValType::I32 => local_values.push(Val::I32Const(0)),
+                        ValType::I64 => local_values.push(Val::I64Const(0)),
+                        ValType::F32 => local_values.push(Val::F32Const(0.0)),
+                        ValType::F64 => local_values.push(Val::F64Const(0.0)),
+                    }            
+                }
+                
+                // 10. Let F be the <frame> { 'module' f.'module', 'locals' "val^n" "val_0^*" }.
+                stack_values.extend(local_values);
+                let frame = Frame {
+                    module: module_inst.clone(),
+                    locals: stack_values,
+                };
 
-            // 8. Pop the values "val^n" from the stack.            
-            let mut stack_values = vec![];
-            for _ in local_types.iter() {
-                if let Some(v) = self.value_stack.pop() {
-                    stack_values.push(v);
-                }                
-            }
-                    
-            // 9. Let "val_0^*" be the list of zero values of types "t^*"
-            let mut local_values = vec![];
-            for local_type in local_types {
-                match local_type {
-                    ValType::I32 => local_values.push(Val::I32Const(0)),
-                    ValType::I64 => local_values.push(Val::I64Const(0)),
-                    ValType::F32 => local_values.push(Val::F32Const(0.0)),
-                    ValType::F64 => local_values.push(Val::F64Const(0.0)),
-                }            
-            }
-            
-            // 10. Let F be the <frame> { 'module' f.'module', 'locals' "val^n" "val_0^*" }.
-            stack_values.extend(local_values);
-            let frame = Frame {
-                module: module_inst.clone(),
-                locals: stack_values,
-            };
+                // 11. Push the activation of F with arity "m" to the stack.
+                let activation = Activation(ft.1.len().try_into().unwrap(), frame);
+                self.frame_stack.push(activation);
 
-            // 11. Push the activation of F with arity "m" to the stack.
-            let activation = Activation(ft.1.len().try_into().unwrap(), frame);
-            self.frame_stack.push(activation);
-
-            // 12. <Execute> the instruction 'block'[t_2^m] "instr^*" 'end'.
-            let block_instr = Instr::Block(ft.1.clone(), instrs.clone());            
-            self.execute_instr(block_instr);
-            
-        } else {
-            panic!("普通の関数しかinvokeしません");
-        }    
+                // 12. <Execute> the instruction 'block'[t_2^m] "instr^*" 'end'.
+                let block_instr = Instr::Block(ft.1.clone(), instrs.clone());            
+                self.execute_instr(block_instr);            
+            },
+            FuncInst::Host { func_type: _ft, host_code } => {
+                match host_code.as_ref() {
+                    "log" => {
+                        // println!("host function func_type: {:?}", ft);
+                        println!("host function invoked! {:?}", self.value_stack);
+                    },
+                    _ => {},
+                }
+            },
+        }
     }
 
     fn execute_instr(&mut self, instr: Instr) {
         match instr {
-            Instr::Call(x) => { self.execute_call(x.try_into().unwrap()) },
+            Instr::I32Const(val) => { println!("{:?}", "wow"); self.value_stack.push(val); }
+            Instr::Call(x) => { self.execute_call(x.try_into().unwrap()); },
             Instr::Block(result_type, instrs) => { self.execute_block(result_type, &instrs); },
             _ => {},
         }
@@ -253,7 +271,7 @@ impl Runtime {
 
         // 3. Let "a" be the <function address> F.'module'.'funcaddrs'[x]
         let func_addr = current_frame.1.module.borrow_mut().func_addrs[x];
-
+println!("func_addr {:?}", x);
         // 4. <Invoke> the function instance at address a.
         self.invoke_function(func_addr);
     }
@@ -261,7 +279,7 @@ impl Runtime {
     fn execute_block(&mut self, result_type: ResultType, expr: &Expr) {
         // 1. Let "n" be the arity |t^?| of the <result type> "t^?".
         let n = result_type.len();
-
+println!("execute_block: {:?}", expr);
         // 2. Let L be the label whose arity is "n" and whose continuation is the end of the block.
         let label = Label(n.try_into().unwrap(), vec![]);
 
@@ -272,9 +290,10 @@ impl Runtime {
     fn enter_exprs(&mut self, expr: &Expr, label: Label) {
         // 1. Push L to the stack.
         self.label_stack.push(label);
-
+println!("enter_exprs: {:?}", expr);
         // 2. Jump to the start of the instruction sequence <instr^*>.
         for instr in expr.instrs.iter() {
+            println!("enter_exprs: {:?}", instr);
             self.execute_instr(instr.clone());
         }
 

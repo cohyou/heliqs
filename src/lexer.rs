@@ -22,6 +22,8 @@ macro_rules! make_token {
                 "f32" => Token::ValType(ValType::F32),
                 "f64" => Token::ValType(ValType::F64),
 
+                "i32.const" => Token::I32Const,
+
                 "call" => Token::Call,
 
                 _ if $bytes[0] == b'$' => Token::Name(s[1..].to_string()),
