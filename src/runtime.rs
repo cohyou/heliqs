@@ -111,9 +111,22 @@ impl Runtime {
     }
 
     pub fn instantiate(&mut self, module: &Module, extern_vals: Vec<ExternVal>) {
+        // 5. Let "val^*" be the vector of <global> initialization <values> determined by "module" and "externval^n".
+        // These may be calculated as follows.
+
+
         // 6. Let "moduleinst" be a new module instance <allocated> from "module" in Store S with imports "externval^n" and
         // global initializer values "val^*", and let S' be extended store produced by module allocation.
         let module_inst = self.allocate_module(module, extern_vals, vec![]);
+
+        // 7. Let F be the <frame> { 'module' "moduleinst" 'locals' e}.
+        let frame = Frame { module: module_inst.clone(), locals: vec![] };
+
+        // 8. Push the frame F to the stack.
+        self.frame_stack.push(Activation(0, frame));
+
+        // 12. Pop the frame from the stack.
+        self.frame_stack.pop();
 
         // 15. If the <start function> "module".'start' is not empty, then:
         if module.start.is_some() {
@@ -128,6 +141,8 @@ impl Runtime {
     }
 
     fn allocate_module(&mut self, module: &Module, extern_vals: Vec<ExternVal>, vals: Vec<Val>) -> Rc<RefCell<ModuleInst>> {
+        // 1. Let "module" be the <module> to allocate and "externval_im^*" the vector of <external values> providing the module's
+        // imports, and "val^*" the initialization <values> of the module's <globals>.
         let module_inst = Rc::new(RefCell::new(ModuleInst::default()));
 
         // set types
@@ -137,6 +152,14 @@ impl Runtime {
         for func in module.funcs.iter() {
             let address = self.allocate_func(func, module_inst.clone());
             module_inst.borrow_mut().func_addrs.push(address);            
+        }
+
+        // 10. Let "funcaddr_mod^*" be the list of <function addresses> extracted from "externval_im^*" concatenated with "funcaddr^*".        
+        for extern_val in extern_vals {
+            if let ExternVal::Func(func_addr) = extern_val {
+                println!("func_addr: {:?}", func_addr);
+                module_inst.borrow_mut().func_addrs.push(func_addr);
+            }
         }
 
         module_inst
@@ -216,11 +239,23 @@ impl Runtime {
 
     fn execute_instr(&mut self, instr: Instr) {
         match instr {
-            Instr::Block(result_type, instrs) => {
-                self.execute_block(result_type, &instrs);
-            },
+            Instr::Call(x) => { self.execute_call(x.try_into().unwrap()) },
+            Instr::Block(result_type, instrs) => { self.execute_block(result_type, &instrs); },
             _ => {},
         }
+    }
+
+    fn execute_call(&mut self, x: FuncAddr) {
+        println!("Instr::Call {:?}", x);
+
+        // 1. Let F be the current frame.
+        let current_frame = self.frame_stack.pop().unwrap();
+
+        // 3. Let "a" be the <function address> F.'module'.'funcaddrs'[x]
+        let func_addr = current_frame.1.module.borrow_mut().func_addrs[x];
+
+        // 4. <Invoke> the function instance at address a.
+        self.invoke_function(func_addr);
     }
 
     fn execute_block(&mut self, result_type: ResultType, expr: &Expr) {

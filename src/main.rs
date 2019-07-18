@@ -32,7 +32,7 @@ fn main() {
             println!();
 
             let mut rt = runtime::Runtime::new(None);
-            let extern_vals = vec![];
+            let extern_vals = vec![runtime::ExternVal::Func(1)];
             println!("module instance: {:?}", rt.instantiate(&module, extern_vals));
         }
     }    
