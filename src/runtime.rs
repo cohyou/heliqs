@@ -1,7 +1,7 @@
 use std::rc::{Rc, Weak};
 use std::cell::RefCell;
 use std::convert::TryInto;
-use core::{FuncType, Func, Mutablity, Instr, Module, ValType};
+use core::{FuncType, Func, Mutablity, Instr, Module, ValType, ResultType, Expr};
 
 pub enum Val {
     I32Const(u32),
@@ -167,7 +167,7 @@ impl Runtime {
         let f = self.store.funcs()[func_addr];
 
         // 3. Let [t_1^n] -> [t_2^m] be the <function type> f.'type'.
-        if let FuncInst::Normal { func_type: ft, module: module_inst, code: code, ..} = f {
+        if let FuncInst::Normal { func_type: ft, module: module_inst, code} = f {
 
             // 5. Let "t^*" be the list of <value types> f.'code'.'locals'.
             let local_types = &code.locals;
@@ -206,9 +206,30 @@ impl Runtime {
             self.frame_stack.push(activation);
 
             // 12. <Execute> the instruction 'block'[t_2^m] "instr^*" 'end'.
-                    
+            let block_instr = Instr::Block(ft.1.clone(), instrs.clone());            
+            self.execute_instr(block_instr);
+            
         } else {
             panic!("普通の関数しかinvokeしません");
         }    
+    }
+
+    fn execute_instr(&self, instr: Instr) {
+        match instr {
+            Instr::Block(result_type, instrs) => {
+                self.execute_block(result_type, &instrs);
+            },
+            _ => {},
+        }
+    }
+
+    fn execute_block(&self, result_type: ResultType, instrs: &Expr) {
+        // 1. Let "n" be the arity |t^?| of the <result type> "t^?".
+        let n = result_type.len();
+
+        // 2. Let L be the label whose arity is "n" and whose continuation is the end of the block.
+        let label = Label(n.try_into().unwrap(), vec![]);
+
+        // 3. <Enter> the block "instr^*" with label L.
     }
 }

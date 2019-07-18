@@ -83,6 +83,8 @@ impl Debug for CST {
 // ひとまず、vecのタプルとして持ちます。
 pub type FuncType = (Vec<ValType>, Vec<ValType>);
 
+pub type ResultType = Vec<ValType>;
+
 // expr ::= instr* end
 // expressionの長さはlimitationとして実装ごとに決定できる
 // ひとまず、usizeにしておこう
