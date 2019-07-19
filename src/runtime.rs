@@ -153,17 +153,13 @@ impl Runtime {
             module_inst.borrow_mut().func_addrs.push(address);            
         }
 
-        // 10. Let "funcaddr_mod^*" be the list of <function addresses> extracted from "externval_im^*" concatenated with "funcaddr^*".        
-        let mut imported_func_addrs = vec![];
-        for extern_val in extern_vals {
+        // 10. Let "funcaddr_mod^*" be the list of <function addresses> extracted from "externval_im^*" concatenated with "funcaddr^*".                
+        for (idx, extern_val) in extern_vals.iter().enumerate() {
             if let ExternVal::Func(func_addr) = extern_val {
                 println!("func_addr: {:?}", func_addr);
-                imported_func_addrs.push(func_addr)
-                // module_inst.borrow_mut().func_addrs.push(func_addr);
+                module_inst.borrow_mut().func_addrs.insert(idx, func_addr.clone());
             }
         }
-        imported_func_addrs.extend(module_inst.borrow_mut().func_addrs.clone()); // あかん、Cloneあかん
-        module_inst.borrow_mut().func_addrs = imported_func_addrs;
 
         module_inst
     }
