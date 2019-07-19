@@ -1,92 +1,11 @@
-use std::rc::{Rc, Weak};
+use std::rc::Rc;
 use std::cell::RefCell;
 use std::convert::TryInto;
-use core::{FuncType, Func, Mutablity, Instr, Module, ValType, ResultType, Expr, Val};
+use core::*;
 
-enum Result {
-    Vals(Vec<Val>),
-    Trap,
-}
+mod structure;
 
-#[derive(Debug)]
-pub enum StoreInst {
-    Func(FuncInst),
-    // Table(TableInst),
-    // Mem(MemInst),
-    // Global(GlobalInst),
-}
-
-#[derive(Default, Debug)]
-pub struct Store {
-    pub insts: Vec<StoreInst>,
-}
-
-impl Store {
-    fn funcs(&self) -> Vec<&FuncInst> {
-        let mut res = vec![];
-        for inst in self.insts.iter() {
-            if let StoreInst::Func(func_inst) = inst {
-                res.push(func_inst);
-            }
-        }
-        res
-    }
-}
-
-type Addr = usize; // 仕様は自由なのでひとまずusize
-type FuncAddr = Addr;
-// type TableAddr = Addr;
-// type MemAddr = Addr;
-// type GlobalAddr = Addr;
-
-#[derive(Debug, Default)]
-pub struct ModuleInst {
-    types: Vec<FuncType>,
-    func_addrs: Vec<FuncAddr>,
-    // table_addrs: Vec<TableAddr>,
-    // mem_addrs: Vec<MemAddr>,
-    // global_addrs: Vec<GlobalAddr>,
-    // exports: Vec<ExportInst>,
-}
-
-type HostFunc = String; // primitiveは関数名をStringで持つことにします
-
-#[derive(Debug)]
-pub enum FuncInst {
-    Normal { func_type: FuncType, module: Rc<RefCell<ModuleInst>>, code: Func }, // module instanceは関数で取得するようにします
-    Host { func_type: FuncType, host_code: HostFunc },
-}
-
-// impl FuncInst {
-//     fn module_instance() -> &ModuleInst {
-        
-//     }
-// }
-
-// type FuncElem = Option<FuncAddr>;
-// struct TableInst { elem: Vec<FuncElem>, max: Option<u32> }
-
-// struct MemInst { data: Vec<u8>, max: Option<u32> }
-
-// struct GlobalInst { value: Val, mutablity: Mutablity }
-
-// struct ExportInst { name: String, value: ExternVal }
-
-pub enum ExternVal {
-    Func(FuncAddr),
-    // Table(TableAddr),
-    // Mem(MemAddr),
-    // Global(GlobalAddr),
-}
-
-struct Label(u32, Vec<Instr>);
-
-struct Frame {
-    locals: Vec<Val>,
-    module: Rc<RefCell<ModuleInst>>,
-}
-
-struct Activation(u32, Frame);
+pub use self::structure::*;
 
 #[derive(Default)]
 pub struct Runtime {
@@ -179,7 +98,7 @@ impl Runtime {
 
         // 5. Append "funcinst" to the 'funcs' of S.
         self.store.insts.push(StoreInst::Func(func_inst));
-println!("allocate_func address: {:?}", address);
+
         // 取得したアドレスを返す
         address
     }
@@ -197,7 +116,7 @@ println!("allocate_func address: {:?}", address);
         println!("invoke_function f: {:?}", f);
         match f {
             FuncInst::Normal { func_type: ft, module: module_inst, code} => {
-println!("invoke_function FuncInst::Normal");
+
                 // 5. Let "t^*" be the list of <value types> f.'code'.'locals'.
                 let local_types = &code.locals;
 
@@ -267,7 +186,7 @@ println!("invoke_function FuncInst::Normal");
 
         // 3. Let "a" be the <function address> F.'module'.'funcaddrs'[x]
         let func_addr = current_frame.1.module.borrow_mut().func_addrs[x];
-println!("func_addr {:?}", x);
+
         // 4. <Invoke> the function instance at address a.
         self.invoke_function(func_addr);
     }
@@ -275,7 +194,7 @@ println!("func_addr {:?}", x);
     fn execute_block(&mut self, result_type: ResultType, expr: &Expr) {
         // 1. Let "n" be the arity |t^?| of the <result type> "t^?".
         let n = result_type.len();
-println!("execute_block: {:?}", expr);
+
         // 2. Let L be the label whose arity is "n" and whose continuation is the end of the block.
         let label = Label(n.try_into().unwrap(), vec![]);
 
@@ -286,7 +205,7 @@ println!("execute_block: {:?}", expr);
     fn enter_exprs(&mut self, expr: &Expr, label: Label) {
         // 1. Push L to the stack.
         self.label_stack.push(label);
-println!("enter_exprs: {:?}", expr);
+
         // 2. Jump to the start of the instruction sequence <instr^*>.
         for instr in expr.instrs.iter() {
             println!("enter_exprs: {:?}", instr);

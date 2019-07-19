@@ -98,12 +98,8 @@ pub enum ImportDesc {
     Global(GlobalType),
 }
 
-#[derive(Debug)]
-pub struct Import {
-    pub module_name: String,
-    pub element_name: String,
-    pub desc: ImportDesc,
-}
+#[derive(Debug, Default)]
+pub struct Memory { memory_type: MemType }
 
 #[derive(Debug, Default, Clone)]
 pub struct Start {
@@ -111,22 +107,24 @@ pub struct Start {
 }
 
 #[derive(Debug)]
+pub struct Import {
+    pub module_name: String,
+    pub element_name: String,
+    pub desc: ImportDesc,
+}
+
+#[derive(Debug, Default)]
 pub struct Module {
     pub id: Option<String>,
-    pub types: Vec<FuncType>,
-    pub imports: Vec<Import>,
+    pub types: Vec<FuncType>,    
     pub funcs: Vec<Func>,
+    pub mems: Vec<Memory>,
     pub start: Option<Start>,
+    pub imports: Vec<Import>,
 }
 
 impl Module {
     pub fn new() -> Module {
-        Module {
-            id: None, 
-            types: vec![],
-            imports: vec![],
-            funcs: vec![],
-            start: None,            
-        }
+        Module::default()
     }
 }
