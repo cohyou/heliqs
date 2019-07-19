@@ -12,6 +12,7 @@ macro_rules! make_token {
                 "type" => Token::Type,                
                 "func" => Token::Func,
                 "start" => Token::Start,
+                "memory" => Token::Memory,
 
                 "local" => Token::Local,
                 "param" => Token::Param,

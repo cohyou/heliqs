@@ -25,6 +25,7 @@ pub enum Token {
     Type,
     Func,
     Start,
+    Memory,
 
     Local,    
     Param,
