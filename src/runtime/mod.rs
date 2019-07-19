@@ -72,11 +72,14 @@ impl Runtime {
             module_inst.borrow_mut().func_addrs.push(address);            
         }
 
-        // 10. Let "funcaddr_mod^*" be the list of <function addresses> extracted from "externval_im^*" concatenated with "funcaddr^*".                
-        for (idx, extern_val) in extern_vals.iter().enumerate() {
+        // 10. Let "funcaddr_mod^*" be the list of <function addresses> extracted from "externval_im^*" concatenated with "funcaddr^*".          
+        let mut func_addr_idx = 0;
+        for extern_val in extern_vals {
             if let ExternVal::Func(func_addr) = extern_val {
-                println!("func_addr: {:?}", func_addr);
-                module_inst.borrow_mut().func_addrs.insert(idx, func_addr.clone());
+                // println!("func_addr: {:?}", func_addr);
+
+                module_inst.borrow_mut().func_addrs.insert(func_addr_idx, func_addr);
+                func_addr_idx += 1;
             }
         }
 
@@ -105,15 +108,15 @@ impl Runtime {
 
     fn invoke_function(&mut self, func_addr: FuncAddr) {
         // 2. Let f be the <function instance>, S.'funcs'[a].
-        println!("self.store.funcs():");
-        for func in self.store.funcs() {
-            println!("    {:?}", func);
-        }
+        // println!("self.store.funcs():");
+        // for func in self.store.funcs() {
+        //     println!("    {:?}", func);
+        // }
         
         let f = self.store.funcs()[func_addr];
 
         // 3. Let [t_1^n] -> [t_2^m] be the <function type> f.'type'.
-        println!("invoke_function f: {:?}", f);
+        // println!("invoke_function f: {:?}", f);
         match f {
             FuncInst::Normal { func_type: ft, module: module_inst, code} => {
 
@@ -171,7 +174,7 @@ impl Runtime {
 
     fn execute_instr(&mut self, instr: Instr) {
         match instr {
-            Instr::I32Const(val) => { println!("{:?}", "wow"); self.value_stack.push(val); }
+            Instr::I32Const(val) => { self.value_stack.push(val); }
             Instr::Call(x) => { self.execute_call(x.try_into().unwrap()); },
             Instr::Block(result_type, instrs) => { self.execute_block(result_type, &instrs); },
             _ => {},
@@ -179,7 +182,7 @@ impl Runtime {
     }
 
     fn execute_call(&mut self, x: FuncAddr) {
-        println!("Instr::Call {:?}", x);
+        // println!("Instr::Call {:?}", x);
 
         // 1. Let F be the current frame.
         let current_frame = self.frame_stack.pop().unwrap();
@@ -208,7 +211,7 @@ impl Runtime {
 
         // 2. Jump to the start of the instruction sequence <instr^*>.
         for instr in expr.instrs.iter() {
-            println!("enter_exprs: {:?}", instr);
+            // println!("enter_exprs: {:?}", instr);
             self.execute_instr(instr.clone());
         }
 
