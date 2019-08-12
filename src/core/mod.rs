@@ -101,6 +101,12 @@ pub enum ImportDesc {
 #[derive(Debug, Default)]
 pub struct Memory { memory_type: MemType }
 
+impl Memory {
+    pub fn new() -> Memory {
+        Memory { memory_type: MemType { limits: Limits { min: 0, max: None } } }
+    }
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct Start {
     pub func: FuncIndex,

@@ -73,9 +73,10 @@ impl Parser {
             },
             Token::Module | 
             
-            Token::Type | 
-            Token::Func | 
-            Token::Import | 
+            Token::Type |
+            Token::Import |
+            Token::Func |            
+            Token::Memory | 
             Token::Start | 
 
             Token::Local | 

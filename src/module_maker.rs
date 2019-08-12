@@ -1,4 +1,4 @@
-use core::{Token, Tree, CST, Module, Func, FuncType, TypeUse, Import, ImportDesc, Instr, Start, Val};
+use core::{Token, Tree, CST, Module, Func, FuncType, TypeUse, Import, ImportDesc, Instr, Start, Val, Memory};
 
 macro_rules! err {
     ($message: expr) => {
@@ -46,6 +46,12 @@ pub fn make_module(cst: CST) -> Option<Module> {
                 Token::Func => {
                     make_func(&module_field).map(|func| {
                         module.funcs.push(func);
+                    });
+                },
+
+                Token::Memory => {
+                    make_memory(&module_field).map(|mem| {
+                        module.mems.push(mem);
                     });
                 },
 
@@ -264,6 +270,22 @@ fn make_instr(csts: &[CST]) -> Option<Vec<Instr>> {
     }
     // println!("make_instr instrs: {:?}", &instrs);
     Some(instrs)
+}
+
+fn make_memory(cst: &CST) -> Option<Memory> {
+    let mem = Memory::new();
+
+    let v = cst.unwrap_node();
+    // cstの0番目はMemoryだが、すでにチェック済みなので無視
+
+    let mut pos = 1;
+
+    // Funcのid（チェックするがまだ使わない
+    if let Tree::Leaf(Token::Name(_)) = v[pos] {
+        pos += 1;
+    }
+
+    Some(mem)
 }
 
 fn make_start(cst: &CST) -> Option<Start> {

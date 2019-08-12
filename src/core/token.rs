@@ -21,11 +21,11 @@ pub enum Token {
 
     Module,
 
-    Import,
     Type,
+    Import,
     Func,
-    Start,
     Memory,
+    Start,    
 
     Local,    
     Param,

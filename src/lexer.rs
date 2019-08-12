@@ -8,11 +8,11 @@ macro_rules! make_token {
             let t = match s.as_ref() {
                 "module" => Token::Module,
 
-                "import" => Token::Import,
-                "type" => Token::Type,                
+                "type" => Token::Type,
+                "import" => Token::Import,                
                 "func" => Token::Func,
-                "start" => Token::Start,
                 "memory" => Token::Memory,
+                "start" => Token::Start,                
 
                 "local" => Token::Local,
                 "param" => Token::Param,
