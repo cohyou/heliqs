@@ -94,7 +94,7 @@ impl Runtime {
 
         // 3. Let "functype" be the <function type> "moduleinst".'types'["func".'type'].
         // let modinst = module_inst.upgrade().expect("molude instのupgradeに失敗");
-        let func_type = module_inst.borrow_mut().types[func.func_type.type_index()].clone();
+        let func_type = module_inst.borrow_mut().types[func.func_type as usize].clone();
 
         // 4. Let "funcinst" be the <function instance> {'type' "functype", 'module' "moduleinst" 'code' "func"}.
         let func_inst = FuncInst::Normal { func_type: func_type.clone(), module: module_inst.clone(), code: func.clone() };

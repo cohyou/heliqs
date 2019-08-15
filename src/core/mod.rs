@@ -1,14 +1,16 @@
+mod annot;
 mod token;
 mod cst;
 mod indices;
 mod instr;
 
+pub use self::annot::*;
 pub use self::token::*;
 pub use self::cst::*;
 pub use self::indices::*;
 pub use self::instr::*;
 
-// Function types classify the signature of functions, 
+// Function types classify the signature of functions,
 // mapping a vector of parameters to a vector of results, written as follows.
 // ということで、パラメータ列から結果列への写像、らしいです。
 // ひとまず、vecのタプルとして持ちます。
@@ -19,60 +21,71 @@ pub type ResultType = Vec<ValType>;
 // expr ::= instr* end
 // expressionの長さはlimitationとして実装ごとに決定できる
 // ひとまず、usizeにしておこう
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Expr {
     pub instrs: Vec<Instr>
 }
 
 // テキストフォーマット独自のstruct
 // 要するにシンボルテーブル
-#[derive(Debug)]
-struct Context {
-    typedefs: Vec<FuncType>, // typedefs functype*
+#[derive(Debug, Default, Clone)]
+pub struct Context {
+    pub types: Vec<Option<String>>,
+    pub funcs: Vec<Option<String>>,
+    pub tables: Vec<Option<String>>,
+    pub mems: Vec<Option<String>>,
+    pub globals: Vec<Option<String>>,
+    pub locals: Vec<Option<String>>,
+    labels: Vec<Option<String>>,
+    pub typedefs: Vec<FuncType>, // typedefs functype*
 }
 
-#[derive(Debug, Default, Clone)]
-pub struct TypeUse(pub TypeIndex); // 本来はContextが必要
-
-impl TypeUse {
-    pub fn type_index(&self) -> usize {
-        // 現在は直接.0をとるだけだが、
-        // Contextが付いた時に型の名前からもindexを取れるようにしたい
-        self.0 as usize
+impl Context {
+    pub fn new() -> Context {
+        Context::default()
     }
+}
+
+#[derive(Debug)]
+pub struct Import {
+    pub module_name: String,
+    pub element_name: String,
+    pub desc: ImportDesc,
 }
 
 #[derive(Debug, Clone)]
 pub struct Func {
-    pub func_type: TypeUse, // type: typeuse 
+    pub func_type: TypeIndex, // type: typeuse
     pub locals: Vec<ValType>, // locals: vec(valtype)
     pub body: Expr, // body: expr
 }
 
 impl Func {
     pub fn new() -> Func {
-        Func { func_type: TypeUse::default(), locals: vec![], body: Expr { instrs: vec![] } }
+        Func { func_type: TypeIndex::default(), locals: vec![], body: Expr { instrs: vec![] } }
     }
 }
 
 #[derive(Debug, Default)]
-struct Limits {
-    min: u32,
-    max: Option<u32>,
+pub struct Limits {
+    pub min: u32,
+    pub max: Option<u32>,
 }
 
-#[derive(Debug, Default)]
-struct ElemType;
+#[derive(Debug)]
+pub enum ElemType {
+    AnyFunc,
+}
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct TableType {
-    limits: Limits,
-    elem_type: ElemType,
+    pub limits: Limits,
+    pub elem_type: ElemType,
 }
 
 #[derive(Debug, Default)]
 pub struct MemType {
-    limits: Limits,
+    pub limits: Limits,
 }
 
 #[derive(Debug)]
@@ -88,18 +101,32 @@ impl Default for Mutablity {
 }
 
 #[derive(Debug, Default)]
-pub struct GlobalType(Mutablity, ValType);
+pub struct GlobalType(pub Mutablity, pub ValType);
 
 #[derive(Debug)]
 pub enum ImportDesc {
-    Func(TypeUse),
+    Func(TypeIndex),
     Table(TableType),
     Mem(MemType),
     Global(GlobalType),
 }
 
+#[derive(Debug)]
+pub struct Table { pub table_type: TableType }
+
+impl Table {
+    pub fn new() -> Table {
+        Table { table_type:
+                TableType {
+                    limits: Limits { min: 0, max: None },
+                    elem_type: ElemType::AnyFunc
+                }
+        }
+    }
+}
+
 #[derive(Debug, Default)]
-pub struct Memory { memory_type: MemType }
+pub struct Memory { pub memory_type: MemType }
 
 impl Memory {
     pub fn new() -> Memory {
@@ -107,26 +134,69 @@ impl Memory {
     }
 }
 
+#[derive(Debug)]
+pub struct Global {
+    pub global_type: GlobalType,
+    pub init: Expr,
+}
+
+impl Global {
+    pub fn new() -> Global {
+        Global {
+            global_type: GlobalType::default(),
+            init: Expr::default(),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum ExportDesc {
+    Func(FuncIndex),
+    Table(TableIndex),
+    Mem(MemIndex),
+    Global(GlobalIndex),
+}
+
+#[derive(Debug)]
+pub struct Export {
+    pub name: String,
+    pub desc: ExportDesc,
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct Start {
     pub func: FuncIndex,
 }
 
-#[derive(Debug)]
-pub struct Import {
-    pub module_name: String,
-    pub element_name: String,
-    pub desc: ImportDesc,
+#[derive(Debug, Default)]
+pub struct Elem {
+    pub table: TableIndex,
+    pub offset: Expr,
+    pub init: Vec<FuncIndex>,
+}
+
+type DataString = String;
+
+#[derive(Debug, Default)]
+pub struct Data {
+    pub data: MemIndex,
+    pub offset: Expr,
+    pub init: DataString,
 }
 
 #[derive(Debug, Default)]
 pub struct Module {
     pub id: Option<String>,
-    pub types: Vec<FuncType>,    
-    pub funcs: Vec<Func>,
-    pub mems: Vec<Memory>,
-    pub start: Option<Start>,
+    pub types: Vec<FuncType>,
     pub imports: Vec<Import>,
+    pub funcs: Vec<Func>,
+    pub tables: Vec<Table>,
+    pub mems: Vec<Memory>,
+    pub globals: Vec<Global>,
+    pub exports: Vec<Export>,
+    pub start: Option<Start>,
+    pub elems: Vec<Elem>,
+    pub data: Vec<Data>,
 }
 
 impl Module {

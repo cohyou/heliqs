@@ -1,7 +1,7 @@
 use std::io::{Read, Seek};
 
 // use core::Module;
-use core::{Token, Tree, CST};
+use core::{Token, Tree, CST, TokenKind, Loc};
 use lexer::lex;
 
 // module ::= '(' 'module' id^? (m: modulefield_I)^* ')' => 丸プラスm^*
@@ -20,8 +20,8 @@ pub struct Parser {
 
 impl Parser {
     pub fn new() -> Parser {
-        Parser {            
-            lookahead: Token::Empty,
+        Parser {
+            lookahead: Token::empty(Loc(0, 0)),
         }
     }
 
@@ -50,48 +50,56 @@ impl Parser {
 
         loop {
             if let Some(tree) = self.parse_element(reader) {
-                // println!("parse_elements tree: {:?}", tree);
                 result.push(tree);
 
-                if self.lookahead == Token::RightParen {                    
+                if self.lookahead.value == TokenKind::RightParen {
                     // 終わりなので、結果を返す
-                    // println!("parse_elements result: {:?}", result);
-
-                    return Some(Tree::Node(result));
+                    break;
                 }
             } else {
-                return None;
+                break;
             }
         }
+
+        // println!("parse_elements result: {:?}", result);
+        Some(Tree::Node(result))
     }
 
     fn parse_element(&mut self, reader: &mut (impl Read + Seek)) -> Option<CST> {
-        match self.lookahead {
-            Token::LeftParen => {
+        match self.lookahead.value {
+            TokenKind::LeftParen => {
                 // リストの始まり
                 self.parse_list(reader)
             },
-            Token::Module | 
-            
-            Token::Type |
-            Token::Import |
-            Token::Func |            
-            Token::Memory | 
-            Token::Start | 
+            TokenKind::Module |
 
-            Token::Local | 
-            Token::Param | 
-            Token::FuncResult | 
+            TokenKind::Type |
+            TokenKind::Import |
+            TokenKind::Func |
+            TokenKind::Table |
+            TokenKind::Memory |
+            TokenKind::Global |
+            TokenKind::Export |
+            TokenKind::Start |
+            TokenKind::Elem |
+            TokenKind::Data |
 
-            Token::Call |
+            TokenKind::Local |
+            TokenKind::Param |
+            TokenKind::FuncResult |
+            TokenKind::AnyFunc |
+            TokenKind::Mutable |
+            TokenKind::Offset |
 
-            Token::ValType(_) |
+            TokenKind::Call |
 
-            Token::I32Const |
+            TokenKind::ValType(_) |
 
-            Token::Name(_) | 
-            Token::Text(_) |             
-            Token::Symbol(_) => {                
+            TokenKind::I32Const |
+
+            TokenKind::Id(_) |
+            TokenKind::Text(_) |
+            TokenKind::Symbol(_) => {
                 let r = Some(Tree::Leaf(self.lookahead.clone()));
                 self.consume(reader);
                 r
@@ -101,30 +109,30 @@ impl Parser {
     }
 
     fn match_token(&mut self, reader: &mut (impl Read + Seek), t: Token) {
-        if self.lookahead == t {
+        if self.lookahead.value == t.value {
             self.consume(reader)
         } else {
-            println!("match_token error: {:?}", self.lookahead);
+            println!("match_token self.lookahead: {:?} t.value: {:?}", self.lookahead, t.value);
         }
     }
 
     fn parse_list(&mut self, reader: &mut (impl Read + Seek)) -> Option<CST> {
-        self.match_token(reader, Token::LeftParen);
+        self.match_token(reader, Token::left_paren(Loc(0, 0)));
         let r = self.parse_elements(reader);
-        self.match_token(reader, Token::RightParen);
+        self.match_token(reader, Token::right_paren(Loc(0, 0)));
         r
     }
 
     // fn parse_module(&mut self, reader: &mut (impl Read + Seek)) {
     //     self.consume(reader);
-        
+
     //     match current_token!(self) {
     //         Token::Module => self.parse_normal_module(reader),
     //         _ => self.parse_inline_module(reader),
     //     }
     // }
 
-    // fn parse_normal_module(&mut self, reader: &mut (impl Read + Seek)) {        
+    // fn parse_normal_module(&mut self, reader: &mut (impl Read + Seek)) {
     //     if let Some(Token::Name(n)) = lex(reader) {
     //         self.module.id = Some(n);
     //     }
@@ -159,7 +167,7 @@ impl Parser {
     // fn parse_import(reader: &mut (impl Read + Seek)) {
     //     if let Some(Token::LeftParen) = lexer::lex(reader) {} else { reader.seek(SeekFrom::Current(-1)).unwrap(); return; }
     //     if let Some(Token::Import) = lexer::lex(reader) {} else { reader.seek(SeekFrom::Current(-2)).unwrap(); return; }
-    //     if let Some(Token::RightParen) = lexer::lex(reader) {} else { reader.seek(SeekFrom::Current(-3)).unwrap(); return; }    
+    //     if let Some(Token::RightParen) = lexer::lex(reader) {} else { reader.seek(SeekFrom::Current(-3)).unwrap(); return; }
     // }
 }
 

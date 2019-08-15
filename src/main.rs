@@ -4,18 +4,20 @@ mod parser;
 mod module_maker;
 mod runtime;
 
+// mod utf8;
+
 use std::fs::File;
 
 use core::*;
 use runtime::*;
 
+// use utf8::*;
+
 fn main() {
-    let file_name = "a.wat";
+    let file_name = "b.wat";
     let mut file = File::open(file_name).unwrap();
 
-    // while let Some(t) = lexer::lex(&mut file) {
-    //     println!("{:?}", t);
-    // }
+    // check_utf8(&mut file);
     let mut p = parser::Parser::new();
     if let Some(cst) = p.parse(&mut file) {
         // println!("CST:    {:?}", cst);
@@ -23,20 +25,26 @@ fn main() {
             println!();
             println!("---- ---- RESULT ---- ----");
             println!();
-            println!("Module: {:?}", module.id);
+            println!("Module id: {:?}", module.id);
             println!("types: {:?}", module.types);
             println!("imports: {:?}", module.imports);            
             println!("funcs:");
             for func in &module.funcs {
                 println!("    {:?}", func);
             }
+            println!("tables: {:?}", module.tables);
+            println!("mems: {:?}", module.mems);
+            println!("globals: {:?}", module.globals);
+            println!("exports: {:?}", module.exports);
             println!("start: {:?}", module.start);
+            println!("elems: {:?}", module.elems);
+            println!("data: {:?}", module.data);
 
             println!();
             let mut store = Runtime::init_store();
             let func_inst = FuncInst::Host { func_type: (vec![ValType::I32], vec![]), host_code: "log".to_string() };
             store.insts.push(StoreInst::Func(func_inst));
-            
+        
             let mut rt = Runtime::new(Some(store));
             let extern_vals = vec![ExternVal::Func(0)];
             println!("module instance: {:?}", rt.instantiate(&module, extern_vals));

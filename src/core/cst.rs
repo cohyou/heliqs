@@ -1,7 +1,8 @@
 use std::fmt::Debug;
 
 use super::token::Token;
-use core::token::ValType;
+use core::Annot;
+use core::token::{ValType, TokenKind};
 
 #[derive(PartialEq, Clone)]
 pub enum Tree<T> {
@@ -31,23 +32,31 @@ impl CST {
     }
 
     pub fn expect_text(&self, message: &'static str) -> String {
-        if let Tree::Leaf(Token::Text(s)) = self { s.clone() } else { panic!(message); }
+        if let Tree::Leaf(Annot{ value: TokenKind::Text(s), ..}) = self { s.clone() } else { panic!(message); }
     }
 
-    pub fn expect_leaf(&self, message: &'static str) -> Token {
-        if let Tree::Leaf(t) = self { t.clone() } else { panic!(message); }        
+    pub fn expect_leaf(&self, message: &'static str) -> TokenKind {
+        if let Tree::Leaf(Annot{value: t, ..}) = self { t.clone() } else { panic!(message); }        
     }
 
     pub fn expect_symbol(&self, message: &'static str) -> String {
-        expecting!(self, Tree::Leaf(Token::Symbol(s)), s.clone(), message)
+        expecting!(self, Tree::Leaf(Annot{ value: TokenKind::Symbol(s), ..}), s.clone(), message)
     }
 
     pub fn expect_name(&self, message: &'static str) -> String {
-        expecting!(self, Tree::Leaf(Token::Name(n)), n.clone(), message)
+        expecting!(self, Tree::Leaf(Annot{ value: TokenKind::Id(n), ..}), n.clone(), message)
     }
 
     pub fn expect_valtype(&self, message: &'static str) -> ValType {
-        expecting!(self, Tree::Leaf(Token::ValType(vt)), vt.clone(), message)
+        expecting!(self, Tree::Leaf(Annot{ value: TokenKind::ValType(vt), ..}), vt.clone(), message)
+    }
+
+    pub fn is_token_type(&self, token_kind: TokenKind) -> bool {
+        if let Tree::Leaf(Annot{value: t, ..}) = self {
+            t == &token_kind
+        } else {
+            false
+        }
     }
 
     pub fn match_token(&self, token: Token) -> bool {
