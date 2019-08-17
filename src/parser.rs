@@ -71,40 +71,11 @@ impl Parser {
                 // リストの始まり
                 self.parse_list(reader)
             },
-            TokenKind::Module |
-
-            TokenKind::Type |
-            TokenKind::Import |
-            TokenKind::Func |
-            TokenKind::Table |
-            TokenKind::Memory |
-            TokenKind::Global |
-            TokenKind::Export |
-            TokenKind::Start |
-            TokenKind::Elem |
-            TokenKind::Data |
-
-            TokenKind::Local |
-            TokenKind::Param |
-            TokenKind::FuncResult |
-            TokenKind::AnyFunc |
-            TokenKind::Mutable |
-            TokenKind::Offset |
-
-            TokenKind::Call |
-
-            TokenKind::ValType(_) |
-
-            TokenKind::I32Const |
-
-            TokenKind::Id(_) |
-            TokenKind::Text(_) |
-            TokenKind::Symbol(_) => {
+            _ => {
                 let r = Some(Tree::Leaf(self.lookahead.clone()));
                 self.consume(reader);
                 r
-            }
-            _ => None,
+            },
         }
     }
 

@@ -8,22 +8,16 @@
   (import "wasi" "global" (global i32))
   (func $bbb (type $two) (param $bb i64) (param i64)
     (local i32) (local $aa4 i64)
-    i32.const 0
-    i32.const 1
-    i32.const 2
+    get_local $aa4
   )
   (table $tab 5 anyfunc)
   (memory $mem 1 2)
-  (global $gg (mut i64) i32.const 3 i32.const 4)
-  (export "ex1" (func 43))
+  (global $gg1 (mut i32) nop)
   (export "ex2" (func $bbb))
-  (export "ex3" (table 54))
   (export "ex4" (table $tab))
-  (export "ex5" (memory 23))
   (export "ex6" (memory $mem))
-  (export "ex7" (global 756))
-  (export "ex8" (global $gg))
+  (export "ex8" (global $gg1))
   (start 1)
-  (elem $tab (offset i32.const 5 i32.const 6) 0 $bbb 7 8)
-  (data $mem (offset i32.const 10 i32.const 20) "fceiqwxgabkfiuha")
+  (elem $tab (offset nop) 0 $bbb 7 8)
+  (data $mem (offset nop) "fceiqwxgabkfiuha")
 )

@@ -1,12 +1,23 @@
+mod error;
+mod util;
+mod instr;
+mod func;
+
+use std::convert::TryFrom;
 use std::iter::repeat;
 use core::{
     Annot, TokenKind, Token, Tree, CST, Module,
     Func, FuncType, Import, ImportDesc, Instr, Start,
-    Val, Memory, Context, TypeIndex, ValType, Limits,
+    Memory, Context, TypeIndex, ValType, Limits,
     MemType, Table, TableType, ElemType, Global, GlobalType, Mutablity, Expr,
     Export, ExportDesc, FuncIndex, TableIndex, MemIndex, GlobalIndex,
-    Elem, Data
+    Elem, Data, MemArg, LocalIndex, Id, Loc,
 };
+pub use self::error::*;
+pub use self::util::*;
+pub use self::instr::*;
+pub use self::func::*;
+
 
 macro_rules! tk { ($kind:pat) => { Tree::Leaf(Annot{value: $kind, ..}) } }
 
@@ -43,11 +54,30 @@ pub fn make_module(cst: CST) -> Option<Module> {
         pos += 1;
     }
 
-    for module_field in &vv[pos..] {
+    // 書かれた順番で定義していくと具合が悪いので、まずソートする
+    let mut sliced = vv[pos..].to_vec();
+    // println!("sliced: {:?}", sliced);
+    sliced.sort_by_key(|k| {
+        match k.unwrap_node()[0] {
+            tk!(TokenKind::Type) => 1,
+            tk!(TokenKind::Import) => 2,
+            tk!(TokenKind::Table) => 3,
+            tk!(TokenKind::Memory) => 4,
+            tk!(TokenKind::Global) => 5,
+            tk!(TokenKind::Func) => 6,
+            tk!(TokenKind::Export) => 7,
+            tk!(TokenKind::Start) => 8,
+            tk!(TokenKind::Elem) => 9,
+            tk!(TokenKind::Data) => 10,
+            _ => 0,
+        }
+    });
+
+    for module_field in sliced {
         // println!("module_field: {:?}", module_field);
         let vvv = module_field.expect_node("module読込時エラー");
 
-        match &vvv[0].expect_leaf("module nodeの最初がkeywordではない") {
+        match &vvv[0].expect_token_kind("module nodeの最初がkeywordではない") {
             TokenKind::Type => {
                 let mut pos = 1;
 
@@ -252,7 +282,7 @@ fn make_import_desc(cst: &CST, context: &mut Context) -> Option<ImportDesc> {
             // Funcのid
             make_id!(v_iter, context.funcs);
 
-            make_typeuse(&mut v_iter, context).map(|(typeuse, _, _)| {
+            make_typeuse(&mut v_iter, context).map(|(typeuse, _, _, _)| {
                 ImportDesc::Func(typeuse)
             })
         },
@@ -285,89 +315,27 @@ fn make_import_desc(cst: &CST, context: &mut Context) -> Option<ImportDesc> {
     }
 }
 
-fn make_func(cst: &CST, context: &mut Context) -> Option<Func> {
-    // println!("make_func cst: {:?}", cst);
-    let mut func = Func::new();
-
-    let v = cst.unwrap_node();
-    let mut v_iter = v.iter().peekable();
-    v_iter.next();  // cstの0番目はFuncだが、すでにチェック済みなので無視
-
-    // Funcのid
-    make_id!(v_iter, context.funcs);
-
-    let (mut local_context, next_) = make_typeuse(&mut v_iter, context)
-        .map(|(typeuse, local_context, next)| {
-            func.func_type = typeuse;
-            (local_context, next)
-    }).expect("local contextを取得できず");
-
-    let mut next = next_;
-    loop {
-        // println!("locals next: {:?}", next);
-        if let Some(Tree::Node(lv)) = next {
-            let mut lv_iter = lv.iter();
-            let local_lv_next = lv_iter.next();
-            if local_lv_next.is_none() { break; }  // 即不正というわけではない
-            if local_lv_next.unwrap().is_token_type(TokenKind::Local) {
-
-                let mut local_vt_next = lv_iter.next();
-
-                // idがくればそれをcontextに登録
-                let mut local_pushed = false;  // 二重登録防止
-                if let Some(tk!(TokenKind::Id(n))) = local_vt_next {
-                    local_context.locals.push(Some(n.clone()));
-                    local_pushed = true;
-                    local_vt_next = lv_iter.next();
-                }
-
-                // 最後に型をみる
-                if let Some(tk!(TokenKind::ValType(vt))) = local_vt_next {
-                    func.locals.push(vt.clone());
-                    if !local_pushed { local_context.locals.push(None) }
-                } else {
-                    panic!("'local'の後にValTypeがこない");
-                }
-
-            } else {
-                break;  // instrかもしれないので終了
-            }
-        } else {
-            break;
-        }
-
-        // 次を取る前にチェック
-        // 明らかにダサいが他に方法が浮かばない
-        if let Some(&Tree::Node(lv)) = v_iter.peek() {
-            if lv.len() >= 2 {
-                if let tk!(TokenKind::Local) = lv[0] {
-                    next = v_iter.next();
-                    continue;
-                }
-            }
-        }
-        break;
-    }
-
-    // isntrs
-    make_instrs(&mut v_iter, &local_context).map(|instrs| {
-        func.body.instrs = instrs;
-    });
-
-    Some(func)
-}
-
-fn make_typeuse<'a>(v: &mut (impl Iterator<Item=&'a CST>), context: &Context)
-    -> Option<(TypeIndex, Context, Option<&'a CST>)> {
-    v.next()
+fn make_typeuse<'a, Iter>(v_iter: &'a mut Iter, context: &Context)
+    -> Option<(TypeIndex, Context, Option<&'a CST>, &'a mut Iter)>
+    where Iter: Iterator<Item=&'a CST> {
+    let mut v = v_iter.peekable();
+    if let Some( (n_, new_context_, result_next_, v_) ) =
+        v.next()
         .map(|typeidx| {
             let types = typeidx.expect_node("");
             let tk = types[1].expect_leaf("");
-            make_typeidx(tk, context)
+            make_typeidx(&tk, context)
         })
-        .map(|n| (n, &context.typedefs[n as usize]))
+        .map(|n| {
+            let nn = n.unwrap();
+            (nn, &context.typedefs[nn as usize])
+        })
         .map(|(n, def)| {
-            let mut new_context = Context::new();
+
+            // 仕様書にはっきりとは書かれていないが、localのcontextは元のcontextを複製して作ることにする
+            // let mut new_context = Context::new();
+            let mut new_context = context.clone();
+
             new_context.locals = repeat(None).take(def.0.len()).collect();
 
             let mut param_idx = 0;
@@ -375,23 +343,26 @@ fn make_typeuse<'a>(v: &mut (impl Iterator<Item=&'a CST>), context: &Context)
 
             // paramを調べる
             let mut next;
+            let mut result_next = None;
             loop {
-                next = v.next();
+                next = v.peek();
                 if let Some(Tree::Node(vv)) = next {
+
+
                     let mut vv_iter = vv.iter();
 
                     if let Some(child_cst) = vv_iter.next() {
-                        match child_cst.expect_leaf("a") {
+                        match child_cst.expect_token_kind("a") {
                             TokenKind::Param => {
                                 let mut val_type: Option<ValType> = None;
                                 vv_iter.next().map(|id| {
-                                    match id.expect_leaf("b") {
+                                    match id.expect_token_kind("b") {
                                         TokenKind::Id(i) => {
                                             // idを入れる
-                                            new_context.locals[param_idx] = Some(i);
+                                            new_context.locals[param_idx] = Some(i.clone());
                                         },
                                         TokenKind::ValType(vt) => {
-                                            val_type = Some(vt);
+                                            val_type = Some(vt.clone());
                                         },
                                         _ => { panic!("paramの宣言が不正"); }
                                     }
@@ -400,8 +371,8 @@ fn make_typeuse<'a>(v: &mut (impl Iterator<Item=&'a CST>), context: &Context)
 
                                 if val_type.is_none() {
                                     vv_iter.next().map(|elem| {
-                                        if let TokenKind::ValType(vt) = elem.expect_leaf("") {
-                                            val_type = Some(vt);
+                                        if let TokenKind::ValType(vt) = elem.expect_token_kind("") {
+                                            val_type = Some(vt.clone());
                                         } else {
                                             panic!("paramの宣言が不正");
                                         }
@@ -412,6 +383,7 @@ fn make_typeuse<'a>(v: &mut (impl Iterator<Item=&'a CST>), context: &Context)
                             _ => { break; }
                         }
                     }
+                    result_next = Some(v.next());  // ここで初めて確定
                 } else {
                     break;
                 }
@@ -425,11 +397,11 @@ fn make_typeuse<'a>(v: &mut (impl Iterator<Item=&'a CST>), context: &Context)
             if let Some(Tree::Node(vv)) = next {
                 let mut vv_iter = vv.iter();
                 if let Some(child_cst) = vv_iter.next() {
-                    if child_cst.expect_leaf("") == TokenKind::FuncResult {
+                    if child_cst.expect_token_kind("") == &TokenKind::FuncResult {
                         num_of_result = 1;
                         result_type = vv_iter.next().map(|type_cst| {
-                            if let TokenKind::ValType(vt) = type_cst.expect_leaf("") {
-                                vt
+                            if let TokenKind::ValType(vt) = type_cst.expect_token_kind("") {
+                                vt.clone()
                             } else {
                                 panic!("resultの型がとれなかった");
                             }
@@ -471,9 +443,16 @@ fn make_typeuse<'a>(v: &mut (impl Iterator<Item=&'a CST>), context: &Context)
             // typeuse終了(funcの中がlistでなくなった)
             // しかしこの基準はinstrの中にlistで始まるものが存在しないと仮定している
             // 本来ならそういったinstrがないかチェックすべき
-            // println!("new_context: {:?}", new_context.locals);
-            (n, new_context, next)
-        })
+            // println!("new_context: locals: {:?} globals: {:?}", new_context.locals, new_context.globals);
+            // (n, new_context, next, v)
+            // (n, new_context, None, v_iter)
+            (n, new_context, result_next, &mut v)
+        }) {
+            let res = result_next_.and_then(|n| n);
+return Some( (n_, new_context_, res, v_iter) );
+        } else {
+            return None;
+        }
     // None
 }
 
@@ -554,6 +533,8 @@ fn make_global(cst: &CST, context: &mut Context) -> Option<Global> {
         global.init = Expr { instrs: instrs };
     });
 
+    // println!("context.globals: {:?}", context.globals);
+
     Some(global)
 }
 
@@ -586,33 +567,33 @@ fn make_export_desc(cst: &CST, context: &mut Context) -> Option<ExportDesc> {
 
     match next {
         Some(tk!(TokenKind::Func)) => {
-            if let Some(tk!(t)) = v_iter.next() {
-                let funcidx = make_funcidx(t.clone(), context);
-                Some(ExportDesc::Func(funcidx))
+            if let Some(Tree::Leaf(t)) = v_iter.next() {
+                let funcidx = make_funcidx(t, context);
+                Some(ExportDesc::Func(funcidx.unwrap()))
             } else {
                 panic!("export funcの次が不正");
             }
         },
         Some(tk!(TokenKind::Table)) => {
-            if let Some(tk!(t)) = v_iter.next() {
-                let tableidx = make_tableidx(t.clone(), context);
-                Some(ExportDesc::Table(tableidx))
+            if let Some(Tree::Leaf(t)) = v_iter.next() {
+                let tableidx = make_tableidx(t, context);
+                Some(ExportDesc::Table(tableidx.unwrap()))
             } else {
                 panic!("export tableの次が不正");
             }
         },
         Some(tk!(TokenKind::Memory)) => {
-            if let Some(tk!(t)) = v_iter.next() {
-                let memidx = make_memidx(t.clone(), context);
-                Some(ExportDesc::Mem(memidx))
+            if let Some(Tree::Leaf(t)) = v_iter.next() {
+                let memidx = make_memidx(t, context);
+                Some(ExportDesc::Mem(memidx.unwrap()))
             } else {
                 panic!("export memoryの次が不正");
             }
         },
         Some(tk!(TokenKind::Global)) => {
-            if let Some(tk!(t)) = v_iter.next() {
-                let globalidx = make_globalidx(t.clone(), context);
-                Some(ExportDesc::Global(globalidx))
+            if let Some(Tree::Leaf(t)) = v_iter.next() {
+                let globalidx = make_globalidx(t, context);
+                Some(ExportDesc::Global(globalidx.unwrap()))
             } else {
                 panic!("export globalの次が不正");
             }
@@ -621,45 +602,49 @@ fn make_export_desc(cst: &CST, context: &mut Context) -> Option<ExportDesc> {
     }
 }
 
-macro_rules! make_idx_func {
+macro_rules! err { ($mes:expr) => { ParseError::make($mes) }; }
+
+macro_rules! make_idx_func2 {
     ($token:ident,$ret:ident,$v:expr) => {{
-        match $token {
+        match &$token.value {
             TokenKind::Symbol(s) => {
                 s.parse::<$ret>()
-                .expect("idxがu32に変換できない")
+                .map_err(|_| ParseError::StrToNum($token.clone()))
             }
             TokenKind::Id(n) => {
-                $v.iter().position(|tp| {
-                    match tp {
-                        Some(id) => id == &n,
-                        _ => false,
-                    }
-                })
-                .expect("contextから要素名が見つからない") as $ret
+                // println!("n: {:?}", n);
+                $v.iter()
+                // .inspect(|c| println!("before: {:?}", c))
+                .position(|tp| if let Some(idx) = tp { idx == n } else { false })
+                .and_then(|idx| $ret::try_from(idx).ok() )
+                .ok_or(err!("contextから要素名が見つからない"))
             }
-            _ => { panic!("idxとして解釈不可"); }
+            _ => Err(err!("idxとして解釈不可")),
         }
     }};
 }
 
-fn make_typeidx(token: TokenKind, context: &Context) -> TypeIndex {
-    make_idx_func!(token, TypeIndex, context.types)
+type Result<T> = std::result::Result<T, ParseError>;
+
+fn make_typeidx(token: &Token, context: &Context) -> Result<TypeIndex> {
+    make_idx_func2!(token, TypeIndex, context.types)
+    // make_idx_func!(token, TypeIndex, context.types)
 }
 
-fn make_funcidx(token: TokenKind, context: &Context) -> FuncIndex {
-    make_idx_func!(token, FuncIndex, context.funcs)
+fn make_funcidx(token: &Token, context: &Context) -> Result<FuncIndex> {
+    make_idx_func2!(token, FuncIndex, context.funcs)
 }
 
-fn make_tableidx(token: TokenKind, context: &Context) -> TableIndex {
-    make_idx_func!(token, TableIndex, context.tables)
+fn make_tableidx(token: &Token, context: &Context) -> Result<TableIndex> {
+    make_idx_func2!(token, TableIndex, context.tables)
 }
 
-fn make_memidx(token: TokenKind, context: &Context) -> MemIndex {
-    make_idx_func!(token, MemIndex, context.mems)
+fn make_memidx(token: &Token, context: &Context) -> Result<MemIndex> {
+    make_idx_func2!(token, MemIndex, context.mems)
 }
 
-fn make_globalidx(token: TokenKind, context: &Context) -> GlobalIndex {
-    make_idx_func!(token, GlobalIndex, context.globals)
+fn make_globalidx(token: &Token, context: &Context) -> Result<GlobalIndex> {
+    make_idx_func2!(token, GlobalIndex, context.globals)
 }
 
 fn make_start(cst: &CST, context: &Context) -> Option<Start> {
@@ -670,9 +655,9 @@ fn make_start(cst: &CST, context: &Context) -> Option<Start> {
     let mut v_iter = v.iter();
     v_iter.next();  // cstの0番目はstartだが、すでにチェック済みなので無視
 
-    if let Some(tk!(t)) = v_iter.next() {
-        let funcidx = make_funcidx(t.clone(), context);
-        start.func = funcidx;
+    if let Some(Tree::Leaf(t)) = v_iter.next() {
+        let funcidx = make_funcidx(t, context);
+        start.func = funcidx.unwrap();
     } else {
         panic!("startidxが不正");
     }
@@ -688,9 +673,9 @@ fn make_elem(cst: &CST, context: &Context) -> Option<Elem> {
     v_iter.next();  // cstの0番目はelemだが、すでにチェック済みなので無視
 
     // tableidx
-    if let Some(tk!(t)) = v_iter.next() {
-        let tableidx = make_tableidx(t.clone(), context);
-        elem.table = tableidx;
+    if let Some(Tree::Leaf(t)) = v_iter.next() {
+        let tableidx = make_tableidx(t, context);
+        elem.table = tableidx.unwrap();
     } else {
         panic!("elem tableidxが不正");
     }
@@ -708,9 +693,9 @@ fn make_elem(cst: &CST, context: &Context) -> Option<Elem> {
     // 残りはfuncidx
     for token in v_iter {
         println!("token: {:?}", token);
-        if let tk!(t) = token {
-            let funcidx = make_funcidx(t.clone(), context);
-            elem.init.push(funcidx);
+        if let Tree::Leaf(t) = token {
+            let funcidx = make_funcidx(t, context);
+            elem.init.push(funcidx.unwrap());
         } else {
             panic!("elem funcidxが不正");
         }
@@ -727,9 +712,9 @@ fn make_data(cst: &CST, context: &Context) -> Option<Data> {
     v_iter.next();  // cstの0番目はdataだが、すでにチェック済みなので無視
 
     // memidx
-    if let Some(tk!(t)) = v_iter.next() {
-        let memidx = make_memidx(t.clone(), context);
-        data.data = memidx;
+    if let Some(Tree::Leaf(t)) = v_iter.next() {
+        let memidx = make_memidx(t, context);
+        data.data = memidx.unwrap();
     } else {
         panic!("data memidxが不正");
     }
@@ -765,242 +750,3 @@ fn make_offset<'a>(v: &mut (impl Iterator<Item=&'a CST>), context: &Context) -> 
     Some(expr)
 }
 
-fn make_instrs<'a>(v: &mut (impl Iterator<Item=&'a CST>), context: &Context) -> Option<Vec<Instr>> {
-    let mut instrs = vec![];
-    let mut v = v.peekable();
-    let mut instr = v.next();
-    loop {
-        println!("instr: {:?}", instr);
-        if let Some(tk!(token)) = instr {
-            if let Some(instr) = make_block_instr(token.clone(), context) {
-                instrs.push(instr);
-            }
-            if let Some(instr) = make_plain_instr(token.clone(), context) {
-                instrs.push(instr);
-            }
-        }
-        if v.peek().is_none() { break; }
-        instr = v.next();
-    }
-
-    Some(instrs)
-}
-
-fn make_block_instr(token: TokenKind, context: &Context) -> Option<Instr> {
-    match token {
-        // Control Instructions
-        TokenKind::Block => {},
-        TokenKind::Loop => {},
-        TokenKind::If => {},
-        _ => {},
-    }
-    None
-}
-
-fn make_plain_instr(token: TokenKind, context: &Context) -> Option<Instr> {
-    match token {
-        // Control Instructions
-        TokenKind::Unreachable => {},
-        TokenKind::Nop => {},
-        TokenKind::Br => {},
-        TokenKind::BrIf => {},
-        TokenKind::BrTable => {},
-        TokenKind::Return => {},
-        TokenKind::Call => {
-            // let n = csts[pos+1].expect_symbol("Instr call funcidxが取れない");
-            // let res = n.parse::<u32>().map(|nn| {
-            //     instrs.push(Instr::Call(nn));
-            //     pos += 1;
-            // });
-        },
-        TokenKind::CallIndirect => {},
-
-        // Parametric Instructions
-        TokenKind::Drop => {},
-        TokenKind::Select => {},
-
-        // Variable Instructions
-        TokenKind::GetLocal => {},
-        TokenKind::SetLocal => {},
-        TokenKind::TeeLocal => {},
-        TokenKind::GetGlobal => {},
-        TokenKind::SetGlobal => {},
-
-        // Memory Instructions
-        TokenKind::I32Load => {},
-        TokenKind::I64Load => {},
-        TokenKind::F32Load => {},
-        TokenKind::F64Load => {},
-        TokenKind::I32Load8S => {},
-        TokenKind::I32Load8U => {},
-        TokenKind::I32Load16S => {},
-        TokenKind::I32Load16U => {},
-        TokenKind::I64Load8S => {},
-        TokenKind::I64Load8U => {},
-        TokenKind::I64Load16S => {},
-        TokenKind::I64Load16U => {},
-        TokenKind::I64Load32S => {},
-        TokenKind::I64Load32U => {},
-        TokenKind::I32Store => {},
-        TokenKind::I64Store => {},
-        TokenKind::F32Store => {},
-        TokenKind::F64Store => {},
-        TokenKind::I32Store8 => {},
-        TokenKind::I32Store16 => {},
-        TokenKind::I64Store8 => {},
-        TokenKind::I64Store16 => {},
-        TokenKind::I64Store32 => {},
-        TokenKind::MemorySize => {},
-        TokenKind::MemoryGrow => {},
-
-        // Numeric Instructions
-        TokenKind::I32Const => {
-            // let val = v.next();
-            // val.map(|cst| {
-            //     let num_str = cst.expect_symbol("i32.const 定数値が取れない");
-            //     let _ = num_str.parse::<u32>().map(|i32_num| {
-            //         instrs.push(Instr::I32Const(Val::I32Const(i32_num)));
-            //     });
-            // });
-        },
-        TokenKind::I64Const => {},
-        TokenKind::F32Const => {},
-        TokenKind::F64Const => {},
-
-        TokenKind::I32Clz => {},
-        TokenKind::I32Ctz => {},
-        TokenKind::I32Popcnt => {},
-        TokenKind::I32Add => {},
-        TokenKind::I32Sub => {},
-        TokenKind::I32Mul => {},
-        TokenKind::I32DivS => {},
-        TokenKind::I32DivU => {},
-        TokenKind::I32RemS => {},
-        TokenKind::I32RemU => {},
-        TokenKind::I32And => {},
-        TokenKind::I32Or => {},
-        TokenKind::I32Xor => {},
-        TokenKind::I32Shl => {},
-        TokenKind::I32ShrS => {},
-        TokenKind::I32ShrU => {},
-        TokenKind::I32Rotl => {},
-        TokenKind::I32Rotr => {},
-
-        TokenKind::I64Clz => {},
-        TokenKind::I64Ctz => {},
-        TokenKind::I64Popcnt => {},
-        TokenKind::I64Add => {},
-        TokenKind::I64Sub => {},
-        TokenKind::I64Mul => {},
-        TokenKind::I64DivS => {},
-        TokenKind::I64DivU => {},
-        TokenKind::I64RemS => {},
-        TokenKind::I64RemU => {},
-        TokenKind::I64And => {},
-        TokenKind::I64Or => {},
-        TokenKind::I64Xor => {},
-        TokenKind::I64Shl => {},
-        TokenKind::I64ShrS => {},
-        TokenKind::I64ShrU => {},
-        TokenKind::I64Rotl => {},
-        TokenKind::I64Rotr => {},
-
-        TokenKind::F32Abs => {},
-        TokenKind::F32Neg => {},
-        TokenKind::F32Ceil => {},
-        TokenKind::F32Floor => {},
-        TokenKind::F32Trunc => {},
-        TokenKind::F32Nearest => {},
-        TokenKind::F32Sqrt => {},
-        TokenKind::F32Add => {},
-        TokenKind::F32Sub => {},
-        TokenKind::F32Mul => {},
-        TokenKind::F32Div => {},
-        TokenKind::F32Min => {},
-        TokenKind::F32Max => {},
-        TokenKind::F32Copysign => {},
-
-        TokenKind::F64Abs => {},
-        TokenKind::F64Neg => {},
-        TokenKind::F64Ceil => {},
-        TokenKind::F64Floor => {},
-        TokenKind::F64Trunc => {},
-        TokenKind::F64Nearest => {},
-        TokenKind::F64Sqrt => {},
-        TokenKind::F64Add => {},
-        TokenKind::F64Sub => {},
-        TokenKind::F64Mul => {},
-        TokenKind::F64Div => {},
-        TokenKind::F64Min => {},
-        TokenKind::F64Max => {},
-        TokenKind::F64Copysign => {},
-
-        TokenKind::I32Eqz => {},
-        TokenKind::I32Eq => {},
-        TokenKind::I32Ne => {},
-        TokenKind::I32LtS => {},
-        TokenKind::I32LtU => {},
-        TokenKind::I32GtS => {},
-        TokenKind::I32GtU => {},
-        TokenKind::I32LeS => {},
-        TokenKind::I32LeU => {},
-        TokenKind::I32GeS => {},
-        TokenKind::I32GeU => {},
-
-        TokenKind::I64Eqz => {},
-        TokenKind::I64Eq => {},
-        TokenKind::I64Ne => {},
-        TokenKind::I64LtS => {},
-        TokenKind::I64LtU => {},
-        TokenKind::I64GtS => {},
-        TokenKind::I64GtU => {},
-        TokenKind::I64LeS => {},
-        TokenKind::I64LeU => {},
-        TokenKind::I64GeS => {},
-        TokenKind::I64GeU => {},
-
-        TokenKind::F32Eq => {},
-        TokenKind::F32Ne => {},
-        TokenKind::F32Lt => {},
-        TokenKind::F32Gt => {},
-        TokenKind::F32Le => {},
-        TokenKind::F32Ge => {},
-
-        TokenKind::F64Eq => {},
-        TokenKind::F64Ne => {},
-        TokenKind::F64Lt => {},
-        TokenKind::F64Gt => {},
-        TokenKind::F64Le => {},
-        TokenKind::F64Ge => {},
-
-        TokenKind::I32WrapToI64 => {},
-        TokenKind::I32TruncSToF32 => {},
-        TokenKind::I32TruncUToF32 => {},
-        TokenKind::I32TruncSToF64 => {},
-        TokenKind::I32TruncUToF64 => {},
-        TokenKind::I64ExtendSToI32 => {},
-        TokenKind::I64ExtendUToI32 => {},
-        TokenKind::I64TruncSToF32 => {},
-        TokenKind::I64TruncUToF32 => {},
-        TokenKind::I64TruncSToF64 => {},
-        TokenKind::I64TruncUToF64 => {},
-        TokenKind::F32ConvertSToI32 => {},
-        TokenKind::F32ConvertUToI32 => {},
-        TokenKind::F32ConvertSToI64 => {},
-        TokenKind::F32ConvertUToI64 => {},
-        TokenKind::F32DemoteToF64 => {},
-        TokenKind::F64ConvertSToI32 => {},
-        TokenKind::F64ConvertUToI32 => {},
-        TokenKind::F64ConvertSToI64 => {},
-        TokenKind::F64ConvertUToI64 => {},
-        TokenKind::F64PromoteToF32 => {},
-        TokenKind::I32ReinterpretToF32 => {},
-        TokenKind::I64ReinterpretToF64 => {},
-        TokenKind::F32ReinterpretToI32 => {},
-        TokenKind::F64ReinterpretToI64 => {},
-
-        _ => {},
-    }
-
-    None
-}

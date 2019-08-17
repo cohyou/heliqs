@@ -21,22 +21,24 @@ pub type ResultType = Vec<ValType>;
 // expr ::= instr* end
 // expressionの長さはlimitationとして実装ごとに決定できる
 // ひとまず、usizeにしておこう
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct Expr {
     pub instrs: Vec<Instr>
 }
+
+pub type Id = String;
 
 // テキストフォーマット独自のstruct
 // 要するにシンボルテーブル
 #[derive(Debug, Default, Clone)]
 pub struct Context {
-    pub types: Vec<Option<String>>,
-    pub funcs: Vec<Option<String>>,
-    pub tables: Vec<Option<String>>,
-    pub mems: Vec<Option<String>>,
-    pub globals: Vec<Option<String>>,
-    pub locals: Vec<Option<String>>,
-    labels: Vec<Option<String>>,
+    pub types: Vec<Option<Id>>,
+    pub funcs: Vec<Option<Id>>,
+    pub tables: Vec<Option<Id>>,
+    pub mems: Vec<Option<Id>>,
+    pub globals: Vec<Option<Id>>,
+    pub locals: Vec<Option<Id>>,
+    pub labels: Vec<Option<Id>>,
     pub typedefs: Vec<FuncType>, // typedefs functype*
 }
 
@@ -53,7 +55,7 @@ pub struct Import {
     pub desc: ImportDesc,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Func {
     pub func_type: TypeIndex, // type: typeuse
     pub locals: Vec<ValType>, // locals: vec(valtype)

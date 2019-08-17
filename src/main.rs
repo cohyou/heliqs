@@ -14,7 +14,7 @@ use runtime::*;
 // use utf8::*;
 
 fn main() {
-    let file_name = "b.wat";
+    let file_name = "c.wat";
     let mut file = File::open(file_name).unwrap();
 
     // check_utf8(&mut file);
@@ -34,7 +34,10 @@ fn main() {
             }
             println!("tables: {:?}", module.tables);
             println!("mems: {:?}", module.mems);
-            println!("globals: {:?}", module.globals);
+            println!("globals:");
+            for global in &module.globals {
+                println!("    {:?}", global);
+            }
             println!("exports: {:?}", module.exports);
             println!("start: {:?}", module.start);
             println!("elems: {:?}", module.elems);

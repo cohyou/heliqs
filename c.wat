@@ -1,1 +1,10 @@
-(module)
+(module
+  (type $v (func))
+  (type $void (func))
+  (func $f1 (type $void)
+    (local $arg1 i32)
+    (local $arg1 i64)
+    call_indirect (type $void)
+  )
+  (start $f1)
+)

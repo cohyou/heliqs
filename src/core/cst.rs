@@ -16,7 +16,7 @@ macro_rules! expecting {
             $r
         } else {
             panic!("{} {:?}", $m, $s);
-        }        
+        }
     };
 }
 
@@ -35,8 +35,12 @@ impl CST {
         if let Tree::Leaf(Annot{ value: TokenKind::Text(s), ..}) = self { s.clone() } else { panic!(message); }
     }
 
-    pub fn expect_leaf(&self, message: &'static str) -> TokenKind {
-        if let Tree::Leaf(Annot{value: t, ..}) = self { t.clone() } else { panic!(message); }        
+    pub fn expect_leaf(&self, message: &'static str) -> &Token {
+        if let Tree::Leaf(t) = self { t } else { panic!(message); }
+    }
+
+    pub fn expect_token_kind(&self, message: &'static str) -> &TokenKind {
+        if let Tree::Leaf(Annot{ value: t, ..}) = self { t } else { panic!(message); }
     }
 
     pub fn expect_symbol(&self, message: &'static str) -> String {
@@ -57,6 +61,47 @@ impl CST {
         } else {
             false
         }
+    }
+
+    // 自分がNodeであり、しかも最初のtoken_kindが特定のtoken_kindかどうかを調べる
+    pub fn is_node_with_token_type(&self, token_kind: TokenKind) -> Option<&Self> {
+        if let Tree::Node(v) = self {
+            if let Tree::Leaf(Annot{value: tk, ..}) = &v[0] {
+                if tk == &token_kind { Some(self) } else { None }
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    pub fn symbol(&self) -> Option<String> {
+        if let Tree::Leaf(Annot{ value: TokenKind::Symbol(s), ..}) = self {
+            Some(s.clone())
+        } else {
+            None
+        }
+    }
+
+    pub fn token(&self) -> Option<&Token> {
+        if let Tree::Leaf(token) = self { Some(token) } else { None }
+    }
+
+    pub fn tokenkind(&self) -> Option<&TokenKind> {
+        if let Tree::Leaf(Annot{ value: token_kind, ..}) = self { Some(token_kind) } else { None }
+    }
+
+    pub fn list(&self) -> Option<&Vec<Tree<Token>>> {
+        if let Tree::Node(list) = self { Some(list) } else { None }
+    }
+
+    pub fn id(&self) -> Option<&String> {
+        if let Tree::Leaf(Annot{ value: TokenKind::Id(id), ..}) = self { Some(id) } else { None }
+    }
+
+    pub fn valtype(&self) -> Option<&ValType> {
+        if let Tree::Leaf(Annot{ value: TokenKind::ValType(vt), ..}) = self { Some(vt) } else { None }
     }
 
     pub fn match_token(&self, token: Token) -> bool {

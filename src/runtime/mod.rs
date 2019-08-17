@@ -174,7 +174,7 @@ impl Runtime {
 
     fn execute_instr(&mut self, instr: Instr) {
         match instr {
-            Instr::I32Const(val) => { self.value_stack.push(val); }
+            Instr::I32Const(val) => { self.value_stack.push(Val::I32Const(val)); }
             Instr::Call(x) => { self.execute_call(x.try_into().unwrap()); },
             Instr::Block(result_type, instrs) => { self.execute_block(result_type, &instrs); },
             _ => {},
