@@ -1,7 +1,4 @@
 [package]
-name = "wasm-engine"
+name = "heliqs"
 version = "0.1.0"
-authors = ["cohyou <cohyou@aurola.net>"]
-
-[dependencies]
-itertools = "0.8.0"
+authors = ["cohyou <cohyou@ironoir.io>"]

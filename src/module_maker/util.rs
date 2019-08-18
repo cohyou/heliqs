@@ -4,8 +4,6 @@ use std::convert::TryFrom;
 use core::*;
 use super::error::*;
 
-macro_rules! err { ($mes:expr) => { ParseError::make($mes) }; }
-
 macro_rules! make_idx_func2 {
     ($token:ident,$ret:ident,$v:expr) => {{
         match &$token.value {
@@ -19,9 +17,9 @@ macro_rules! make_idx_func2 {
                 // .inspect(|c| println!("before: {:?}", c))
                 .position(|tp| if let Some(idx) = tp { idx == n } else { false })
                 .and_then(|idx| $ret::try_from(idx).ok() )
-                .ok_or(err!("contextから要素名が見つからない"))
+                .ok_or(err!("contextから要素名が見つからない", $token))
             }
-            _ => Err(err!("idxとして解釈不可")),
+            _ => Err(err!("idxとして解釈不可", $token)),
         }
     }};
 }

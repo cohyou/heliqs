@@ -61,7 +61,7 @@ fn make_local(cst: &CST) -> Option<(Option<&Id>, &ValType)> {
         // id
         let mut v_iter_peekable = v_iter.peekable();
         let id = make_optional_id!(v_iter_peekable);
-println!("id: {:?}", id);
+
         // ValType
         v_iter_peekable.next()
         .and_then(|cst| cst.valtype())
@@ -83,68 +83,68 @@ fn make_typeuse_typeidx<'a>(cst: &CST, context: &Context) -> Option<TypeIndex> {
     })
 }
 
+// parseの途中部分を構成する場合があるので、この部分は関数化できない
 macro_rules! make_typeuse {
-    ($v_iter_peekable:ident, $context:ident, $context_l:ident) => {{
-        let idx = $v_iter_peekable.next()
-        .map(|cst| make_typeuse_typeidx(cst, $context)
-        .map(|idx| {
-            // { $before_params }
+    ($v_iter_peekable:ident, $context:ident, $context_l:ident) => {
 
-            // params (0~)
-            let mut num_of_params = 0;
-            loop {
-                if let Some(cst) = $v_iter_peekable.peek()
-                    .and_then(|cst| cst.is_node_with_token_type(TokenKind::Param)) {
+    $v_iter_peekable.next()
+    .and_then(|cst| make_typeuse_typeidx(cst, $context)
+    .and_then(|idx| {        
 
-                    $v_iter_peekable.next();
-
-                    make_param(cst)
-                    .and_then(|(id, vt)| {
-                        let pidx = num_of_params;
-
-                        let param_defs = &$context_l.typedefs[idx as usize].0;
-                        $context_l.locals = repeat(None).take(param_defs.len()).collect();
-
-                        let vt_def = &param_defs[pidx];
-                        if vt == vt_def {
-                            Some(id.map(|s| s.clone()))
-                        } else {
-                            None
-                        }
-                    })
-                    .map(|id| {
-                        let pidx = num_of_params;
-                        $context_l.locals[pidx] = id.map(|s| s.clone())
-                    });
-
-                    num_of_params += 1;
-                } else {
-                    break;
-                }
-            }
-            if num_of_params != $context_l.locals.len() { return None; }
-
-            // result (0 or 1)
-            let mut num_of_results = 0;
+        // params (0~)
+        let mut num_of_params = 0;
+        loop {
             if let Some(cst) = $v_iter_peekable.peek()
-                .and_then(|cst| cst.is_node_with_token_type(TokenKind::FuncResult)) {
+                .and_then(|cst| cst.is_node_with_token_type(TokenKind::Param)) {
 
-                make_result(cst)
-                .map(|vt| {
-                    let vt_def = &$context_l.typedefs[idx as usize].1[0];
-                    // mystery...
-                    if vt != vt_def { return None; } else { Some(()) }
+                $v_iter_peekable.next();
+
+                make_param(cst)
+                .and_then(|(id, vt)| {
+                    let pidx = num_of_params;
+
+                    let param_defs = &$context_l.typedefs[idx as usize].0;
+                    $context_l.locals = repeat(None).take(param_defs.len()).collect();
+
+                    let vt_def = &param_defs[pidx];
+                    if vt == vt_def {
+                        Some(id.map(|s| s.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .map(|id| {
+                    let pidx = num_of_params;
+                    $context_l.locals[pidx] = id.map(|s| s.clone())
                 });
 
-                num_of_results += 1;
+                num_of_params += 1;
+            } else {
+                break;
             }
-            let def_of_results = $context_l.typedefs[idx as usize].1.len();
-            // mystery...
-            if num_of_results != def_of_results { return None; } else { return Some(idx); }
-        })
-        ).unwrap();
-        idx.unwrap().unwrap() }
-    };
+        }
+        if num_of_params != $context_l.locals.len() { return None; }
+
+        // result (0 or 1)
+        let mut num_of_results = 0;
+        if let Some(cst) = $v_iter_peekable.peek()
+            .and_then(|cst| cst.is_node_with_token_type(TokenKind::FuncResult)) {
+
+            if let Some(vt) = make_result(cst) {
+                let vt_def = &$context_l.typedefs[idx as usize].1[0];                    
+                if vt != vt_def { return None; }
+            }
+            num_of_results += 1;
+        }
+        let def_of_results = $context_l.typedefs[idx as usize].1.len();
+        
+        if num_of_results != def_of_results { return None; }
+
+        Some(idx)
+    })  // .and_then(|idx| {
+    )  // .and_then(|cst| make_typeuse_typeidx(cst, $context)
+
+    }
 }
 
 pub fn make_call_indirect<'a, Iter>(v: &mut Iter, context: &Context) -> Option<Instr>
@@ -152,12 +152,14 @@ pub fn make_call_indirect<'a, Iter>(v: &mut Iter, context: &Context) -> Option<I
     let mut v_iter_peekable = v.peekable();
     let mut context_l = context.clone();
 
-    // typeuse
-    let typeidx = make_typeuse!(v_iter_peekable, context, context_l);
+    // typeuse        
+    make_typeuse!(v_iter_peekable, context, context_l)
+    .map(|typeidx| 
+        // どこかでうまく動いていない
+        Instr::CallIndirect(typeidx)
 
-    // 本来はcontext_lのlocalsが全てNoneなのを確かめるべきだがまたあとで
-
-    Some(Instr::CallIndirect(0))  // どこかでうまく動かないので固定0を入れておく
+        // 本来はcontext_lのlocalsが全てNoneなのを確かめるべきだがまたあとで
+    )
 }
 
 pub fn make_func(cst: &CST, context: &mut Context) -> Option<Func> {
@@ -178,7 +180,9 @@ pub fn make_func(cst: &CST, context: &mut Context) -> Option<Func> {
         context.funcs.push(id.map(|v| v.clone()));
 
         // typeuse
-        func.func_type = make_typeuse!(v_iter_peekable, context, context_l);
+        if let Some(funcidx) = make_typeuse!(v_iter_peekable, context, context_l) {
+             func.func_type = funcidx;
+        }
 
         // locals (0~)
         loop {
@@ -286,7 +290,7 @@ fn test_make_func_1() {
     context.typedefs.push( (vec![], vec![]) );
     context.typedefs.push( (vec![ValType::I32], vec![ValType::I64]) );
 
-    assert_eq!(make_func2(&cst, &mut context), None);
+    assert_eq!(make_func(&cst, &mut context), None);
 }
 
 // unused

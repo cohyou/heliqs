@@ -1,5 +1,5 @@
-mod error;
-mod util;
+#[macro_use]mod error;
+#[macro_use]mod util;
 mod instr;
 mod func;
 
@@ -602,48 +602,26 @@ fn make_export_desc(cst: &CST, context: &mut Context) -> Option<ExportDesc> {
     }
 }
 
-macro_rules! err { ($mes:expr) => { ParseError::make($mes) }; }
+// type Result<T> = std::result::Result<T, ParseError>;
 
-macro_rules! make_idx_func2 {
-    ($token:ident,$ret:ident,$v:expr) => {{
-        match &$token.value {
-            TokenKind::Symbol(s) => {
-                s.parse::<$ret>()
-                .map_err(|_| ParseError::StrToNum($token.clone()))
-            }
-            TokenKind::Id(n) => {
-                // println!("n: {:?}", n);
-                $v.iter()
-                // .inspect(|c| println!("before: {:?}", c))
-                .position(|tp| if let Some(idx) = tp { idx == n } else { false })
-                .and_then(|idx| $ret::try_from(idx).ok() )
-                .ok_or(err!("contextから要素名が見つからない"))
-            }
-            _ => Err(err!("idxとして解釈不可")),
-        }
-    }};
-}
-
-type Result<T> = std::result::Result<T, ParseError>;
-
-fn make_typeidx(token: &Token, context: &Context) -> Result<TypeIndex> {
+fn make_typeidx(token: &Token, context: &Context) -> Result<TypeIndex, ParseError> {
     make_idx_func2!(token, TypeIndex, context.types)
     // make_idx_func!(token, TypeIndex, context.types)
 }
 
-fn make_funcidx(token: &Token, context: &Context) -> Result<FuncIndex> {
+fn make_funcidx(token: &Token, context: &Context) -> Result<FuncIndex, ParseError> {
     make_idx_func2!(token, FuncIndex, context.funcs)
 }
 
-fn make_tableidx(token: &Token, context: &Context) -> Result<TableIndex> {
+fn make_tableidx(token: &Token, context: &Context) -> Result<TableIndex, ParseError> {
     make_idx_func2!(token, TableIndex, context.tables)
 }
 
-fn make_memidx(token: &Token, context: &Context) -> Result<MemIndex> {
+fn make_memidx(token: &Token, context: &Context) -> Result<MemIndex, ParseError> {
     make_idx_func2!(token, MemIndex, context.mems)
 }
 
-fn make_globalidx(token: &Token, context: &Context) -> Result<GlobalIndex> {
+fn make_globalidx(token: &Token, context: &Context) -> Result<GlobalIndex, ParseError> {
     make_idx_func2!(token, GlobalIndex, context.globals)
 }
 

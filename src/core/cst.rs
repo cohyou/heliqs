@@ -31,20 +31,12 @@ impl CST {
         if let Tree::Node(v) = self { v.to_vec() } else { panic!(message); }
     }
 
-    pub fn expect_text(&self, message: &'static str) -> String {
-        if let Tree::Leaf(Annot{ value: TokenKind::Text(s), ..}) = self { s.clone() } else { panic!(message); }
-    }
-
     pub fn expect_leaf(&self, message: &'static str) -> &Token {
         if let Tree::Leaf(t) = self { t } else { panic!(message); }
     }
 
     pub fn expect_token_kind(&self, message: &'static str) -> &TokenKind {
         if let Tree::Leaf(Annot{ value: t, ..}) = self { t } else { panic!(message); }
-    }
-
-    pub fn expect_symbol(&self, message: &'static str) -> String {
-        expecting!(self, Tree::Leaf(Annot{ value: TokenKind::Symbol(s), ..}), s.clone(), message)
     }
 
     pub fn expect_name(&self, message: &'static str) -> String {
@@ -76,28 +68,12 @@ impl CST {
         }
     }
 
-    pub fn symbol(&self) -> Option<String> {
-        if let Tree::Leaf(Annot{ value: TokenKind::Symbol(s), ..}) = self {
-            Some(s.clone())
-        } else {
-            None
-        }
-    }
-
     pub fn token(&self) -> Option<&Token> {
         if let Tree::Leaf(token) = self { Some(token) } else { None }
     }
 
     pub fn tokenkind(&self) -> Option<&TokenKind> {
         if let Tree::Leaf(Annot{ value: token_kind, ..}) = self { Some(token_kind) } else { None }
-    }
-
-    pub fn list(&self) -> Option<&Vec<Tree<Token>>> {
-        if let Tree::Node(list) = self { Some(list) } else { None }
-    }
-
-    pub fn id(&self) -> Option<&String> {
-        if let Tree::Leaf(Annot{ value: TokenKind::Id(id), ..}) = self { Some(id) } else { None }
     }
 
     pub fn valtype(&self) -> Option<&ValType> {

@@ -1,4 +1,4 @@
-# wasm-engine
+# Heliqs
 wasm-engine
 
 1.1 Introduction

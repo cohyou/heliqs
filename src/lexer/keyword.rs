@@ -1,5 +1,51 @@
-use std::io::{Read, Seek, SeekFrom};
-use core::{Annot, Loc, Token, ValType};
+#[derive(Debug, PartialEq, Clone)]
+pub enum Keyword {
+    Module,
+
+    Type,
+    Import,
+    Func,
+    Table,
+    Memory,
+    Global,
+    Export,
+    Start,
+    Elem,
+    Data,
+
+    Local,
+    Param,
+    Result,
+    AnyFunc,
+    Mutable,
+    Offset,
+}
+
+pub fn vec_to_keyword(s: &[u8]) -> Option<Keyword> {
+    match s {
+        b"module" => Some(Keyword::Module),
+
+        b"type" => Some(Keyword::Type),
+        b"import" => Some(Keyword::Import),
+        b"func" => Some(Keyword::Func),
+        b"table" => Some(Keyword::Table),
+        b"memory" => Some(Keyword::Memory),
+        b"global" => Some(Keyword::Global),
+        b"export" => Some(Keyword::Export),
+        b"start" => Some(Keyword::Start),
+        b"elem" => Some(Keyword::Elem),
+        b"data" => Some(Keyword::Data),
+
+        b"local" => Some(Keyword::Local),
+        b"param" => Some(Keyword::Param),
+        b"result" => Some(Keyword::Result),
+        b"anyfunc" => Some(Keyword::AnyFunc),
+        b"mut" => Some(Keyword::Mutable),
+        b"offset" => Some(Keyword::Offset),
+
+        _ => None,
+    }
+}
 
 macro_rules! make_token {
     ($bytes:ident) => {
@@ -25,6 +71,10 @@ macro_rules! make_token {
                 "anyfunc" => Token::any_func(Loc(0, 0)),
                 "mut" => Token::mutable(Loc(0, 0)),
                 "offset" => Token::offset(Loc(0, 0)),
+
+                "inf" => Token::infinity(Loc(0, 0)),
+                "nan" => Token::nan(Loc(0, 0)),  // "nan:0x"も必要
+
 
                 "i32" => Token::val_type(ValType::I32, Loc(0, 0)),
                 "i64" => Token::val_type(ValType::I64, Loc(0, 0)),
@@ -220,9 +270,6 @@ macro_rules! make_token {
                 "f32.reinterpret/i32" => Token::f32_reinterpret_to_i32(Loc(0, 0)),
                 "f64.reinterpret/i64" => Token::f64_reinterpret_to_i64(Loc(0, 0)),
 
-                "inf" => Token::infinity(Loc(0, 0)),
-                "nan" => Token::nan(Loc(0, 0)),  // "nan:0x"も必要
-
                 _ if $bytes[0] == b'$' => Token::id(s[1..].to_string(), Loc(0, 0)),
                 _ => {
                     Token::symbol(s, Loc(0, 0))
@@ -233,77 +280,4 @@ macro_rules! make_token {
             None
         }
     };
-}
-
-pub fn lex(reader: &mut (impl Read + Seek)) -> Option<Token> {
-    let mut c: &mut [u8] = &mut [0;1];
-    let mut token_bytes: Vec<u8> = vec![];
-
-    loop {
-        if let Ok(n) = reader.read(&mut c) {
-            if n > 0 {
-                // println!("c: {:?}", c);
-                match c[0] {
-                    b'(' => { return Some(Token::left_paren(Loc(0, 0))); },
-                    b')' => { return Some(Token::right_paren(Loc(0, 0))); },
-                    b' ' | b'\n' => {},
-                    b'\"' => {
-                        // stringの開始
-                        while reader.read(&mut c).expect("lex: EOF") > 0 && c[0] != b'\"' {
-                            token_bytes.push(c[0])
-                        }
-                        let s = String::from_utf8(token_bytes.to_vec()).unwrap();
-                        return Some(Token::text(s, Loc(0, 0)))
-                    },
-                    _ => {
-                        token_bytes.push(c[0]);
-                        return lex_chars(reader, &mut token_bytes);
-                    },
-                }
-            } else {
-                return make_token!(token_bytes);
-            }
-        } else {
-            // 本当はエラーを返したほうがいい
-            return None;
-        }
-    }
-}
-
-fn lex_chars(reader: &mut (impl Read + Seek), token_bytes: &mut Vec<u8>) -> Option<Token> {
-    let mut c: &mut [u8] = &mut [0;1];
-    loop {
-        if let Ok(_) = reader.read(&mut c) {
-            match c[0] {
-                b'(' | b')' | b' ' | b'\n' => {
-                    reader.seek(SeekFrom::Current(-1)).unwrap();
-                    return make_token!(token_bytes);
-                },
-                _ => {
-                    token_bytes.push(c[0]);
-                }
-            }
-        } else {
-            // 本当はエラーを返したほうがいい
-            return None;
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-enum LexErrorKind {
-    InvalidChar(char),
-    Eof,
-}
-
-type LexError = Annot<LexErrorKind>;
-
-impl LexError {
-    fn invalid_char(c: char, loc: Loc) -> Self {
-        LexError::new(LexErrorKind::InvalidChar(c), loc)
-    }
-
-    fn eof(loc: Loc) -> Self {
-        LexError::new(LexErrorKind::Eof, loc)
-    }
 }

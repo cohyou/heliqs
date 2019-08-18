@@ -1,25 +1,9 @@
+use std::fmt::Debug;
+
 use super::annot::*;
 
-// valtype ::= i32 | i64 | f32 | f64
 #[derive(Debug, PartialEq, Clone)]
-pub enum ValType {
-    I32,
-    I64,
-    F32,
-    F64,
-}
-
-impl Default for ValType {
-    fn default() -> Self {
-        ValType::I32
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum TokenKind {
-    LeftParen,
-    RightParen,
-
+pub enum Keyword {
     Module,
 
     Type,
@@ -35,11 +19,59 @@ pub enum TokenKind {
 
     Local,
     Param,
-    FuncResult,
+    Result,
     AnyFunc,
     Mutable,
     Offset,
+}
 
+#[derive(PartialEq, Clone)]
+pub enum Number {
+    Unsigned(usize),
+}
+
+impl Debug for Number {
+   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+       match &self {
+           Number::Unsigned(num) => write!(f, "{:?}", num),
+           _ => write!(f, "{:?}", self)
+       }        
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum TokenKind {
+    Empty,
+
+    Keyword(Keyword),
+    Number(Number),
+    String(String),
+    Id(String), // $で始まる
+    LeftParen,
+    RightParen,
+    Reserved(String),
+
+    // Module,
+
+    // Type,
+    // Import,
+    // Func,
+    // Table,
+    // Memory,
+    // Global,
+    // Export,
+    // Start,
+    // Elem,
+    // Data,
+
+    // Local,
+    // Param,
+    // FuncResult,
+    // AnyFunc,
+    // Mutable,
+    // Offset,
+
+    ValType(ValType),
 
     /* Block Instructions */
 
@@ -239,43 +271,41 @@ pub enum TokenKind {
     I64ReinterpretToF64,
     F32ReinterpretToI32,
     F64ReinterpretToI64,
-
-
-    ValType(ValType),
-    Symbol(String),
-    Id(String), // $で始まる
-    Text(String), // 普通の文字列 "で囲まれている    
-    Empty,
-
-    Infinity,
-    NaN,
 }
 
 pub type Token = Annot<TokenKind>;
 
 impl Token {
+    pub fn empty(loc: Loc) -> Self { Self::new(TokenKind::Empty, loc) }
+
+    pub fn keyword(kw: Keyword, loc: Loc) -> Self { Self::new(TokenKind::Keyword(kw), loc) }
+    pub fn number_u(num: usize, loc: Loc) -> Self { Self::new(TokenKind::Number(Number::Unsigned(num)), loc) }
+    pub fn string(s: String, loc: Loc) -> Self { Self::new(TokenKind::String(s), loc) }
+    pub fn id(n: String, loc: Loc) -> Self { Self::new(TokenKind::Id(n), loc) }
     pub fn left_paren(loc: Loc) -> Self { Self::new(TokenKind::LeftParen, loc) }
     pub fn right_paren(loc: Loc) -> Self { Self::new(TokenKind::RightParen, loc) }
+    pub fn reserved(s: Vec<u8>, loc: Loc) -> Self { Self::new(TokenKind::Reserved(String::from_utf8(s).unwrap()), loc) }
 
-    pub fn module(loc: Loc) -> Self { Self::new(TokenKind::Module, loc) }
 
-    pub fn func_type(loc: Loc) -> Self { Self::new(TokenKind::Type, loc) }
-    pub fn import(loc: Loc) -> Self { Self::new(TokenKind::Import, loc) }
-    pub fn func(loc: Loc) -> Self { Self::new(TokenKind::Func, loc) }
-    pub fn table(loc: Loc) -> Self { Self::new(TokenKind::Table, loc) }
-    pub fn memory(loc: Loc) -> Self { Self::new(TokenKind::Memory, loc) }
-    pub fn global(loc: Loc) -> Self { Self::new(TokenKind::Global, loc) }
-    pub fn export(loc: Loc) -> Self { Self::new(TokenKind::Export, loc) }
-    pub fn start(loc: Loc) -> Self { Self::new(TokenKind::Start, loc) }
-    pub fn elem(loc: Loc) -> Self { Self::new(TokenKind::Elem, loc) }
-    pub fn data(loc: Loc) -> Self { Self::new(TokenKind::Data, loc) }
+    // pub fn module(loc: Loc) -> Self { Self::new(TokenKind::Module, loc) }
 
-    pub fn local(loc: Loc) -> Self { Self::new(TokenKind::Local, loc) }
-    pub fn param(loc: Loc) -> Self { Self::new(TokenKind::Param, loc) }
-    pub fn func_result(loc: Loc) -> Self { Self::new(TokenKind::FuncResult, loc) }
-    pub fn any_func(loc: Loc) -> Self { Self::new(TokenKind::AnyFunc, loc) }
-    pub fn mutable(loc: Loc) -> Self { Self::new(TokenKind::Mutable, loc) }
-    pub fn offset(loc: Loc) -> Self { Self::new(TokenKind::Offset, loc) }
+    // pub fn func_type(loc: Loc) -> Self { Self::new(TokenKind::Type, loc) }
+    // pub fn import(loc: Loc) -> Self { Self::new(TokenKind::Import, loc) }
+    // pub fn func(loc: Loc) -> Self { Self::new(TokenKind::Func, loc) }
+    // pub fn table(loc: Loc) -> Self { Self::new(TokenKind::Table, loc) }
+    // pub fn memory(loc: Loc) -> Self { Self::new(TokenKind::Memory, loc) }
+    // pub fn global(loc: Loc) -> Self { Self::new(TokenKind::Global, loc) }
+    // pub fn export(loc: Loc) -> Self { Self::new(TokenKind::Export, loc) }
+    // pub fn start(loc: Loc) -> Self { Self::new(TokenKind::Start, loc) }
+    // pub fn elem(loc: Loc) -> Self { Self::new(TokenKind::Elem, loc) }
+    // pub fn data(loc: Loc) -> Self { Self::new(TokenKind::Data, loc) }
+
+    // pub fn local(loc: Loc) -> Self { Self::new(TokenKind::Local, loc) }
+    // pub fn param(loc: Loc) -> Self { Self::new(TokenKind::Param, loc) }
+    // pub fn func_result(loc: Loc) -> Self { Self::new(TokenKind::FuncResult, loc) }
+    // pub fn any_func(loc: Loc) -> Self { Self::new(TokenKind::AnyFunc, loc) }
+    // pub fn mutable(loc: Loc) -> Self { Self::new(TokenKind::Mutable, loc) }
+    // pub fn offset(loc: Loc) -> Self { Self::new(TokenKind::Offset, loc) }
 
     pub fn block(loc: Loc) -> Self { Self::new(TokenKind::Block, loc) }
     pub fn r#loop(loc: Loc) -> Self { Self::new(TokenKind::Loop, loc) }
@@ -291,7 +321,7 @@ impl Token {
     pub fn r#return(loc: Loc) -> Self { Self::new(TokenKind::Return, loc) }
     pub fn call(loc: Loc) -> Self { Self::new(TokenKind::Call, loc) }
     pub fn call_indirect(loc: Loc) -> Self { Self::new(TokenKind::CallIndirect, loc) }
-    
+
     pub fn drop(loc: Loc) -> Self { Self::new(TokenKind::Drop, loc) }
     pub fn select(loc: Loc) -> Self { Self::new(TokenKind::Select, loc) }
 
@@ -464,13 +494,17 @@ impl Token {
     pub fn f32_reinterpret_to_i32(loc: Loc) -> Self { Self::new(TokenKind::F32ReinterpretToI32, loc) }
     pub fn f64_reinterpret_to_i64(loc: Loc) -> Self { Self::new(TokenKind::F64ReinterpretToI64, loc) }
 
-    pub fn val_type(vt: ValType, loc: Loc) -> Self { Self::new(TokenKind::ValType(vt), loc) }
-    pub fn symbol(s: String, loc: Loc) -> Self { Self::new(TokenKind::Symbol(s), loc) }
-    pub fn id(n: String, loc: Loc) -> Self { Self::new(TokenKind::Id(n), loc) }
-    pub fn text(t: String, loc: Loc) -> Self { Self::new(TokenKind::Text(t), loc) }
-    
-    pub fn empty(loc: Loc) -> Self { Self::new(TokenKind::Empty, loc) }
+    pub fn val_type(vt: ValType, loc: Loc) -> Self { Self::new(TokenKind::ValType(vt), loc) }    
+}
 
-    pub fn infinity(loc: Loc) -> Self { Self::new(TokenKind::Infinity, loc) }
-    pub fn nan(loc: Loc) -> Self { Self::new(TokenKind::NaN, loc) }
+impl Debug for Token {
+   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+       match &self.value {
+           TokenKind::Keyword(kw) => write!(f, "{:?}<{:?}>", kw, self.loc),
+           TokenKind::Number(num) => write!(f, "{:?}<{:?}>", num, self.loc),
+           TokenKind::String(s) => write!(f, "{:?}<{:?}>", s, self.loc),
+           TokenKind::Id(id) => write!(f, "${}<{:?}>", id, self.loc),
+           _ => write!(f, "{:?}<{:?}>", self.value, self.loc)
+       }        
+    }
 }

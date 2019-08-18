@@ -1,0 +1,3 @@
+(module $moddd
+  (type (func))
+)
