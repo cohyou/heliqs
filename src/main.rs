@@ -15,7 +15,7 @@ fn main() {
         Ok(cst) => {
             println!("CST: {:?}", cst);
 
-            let mut ast_parser = AstParser::new(cst);
+            let mut ast_parser = AstParser::new(&cst);
             match ast_parser.parse() {
                 Err(err) => println!("AST PARSE ERROR: {:?}", err),
                 Ok(module) => println!("MODULE: {:?}", module),

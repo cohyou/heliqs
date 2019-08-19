@@ -21,6 +21,8 @@ impl Cst {
     pub fn id(&self) -> Option<&String> {
         if let tk!(TokenKind::Id(id)) = self { Some(id) } else { None }
     }
+
+    // pub next(&mut self) -> Option<>
 }
 
 impl Debug for Cst {
