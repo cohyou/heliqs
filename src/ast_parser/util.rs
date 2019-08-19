@@ -13,6 +13,3 @@ macro_rules! make_optional_id {
     }
 }
 
-macro_rules! p {
-    ($e:expr) => { println!(concat!(stringify!($e), ": {:?}"), {&$e}); };
-}

@@ -87,9 +87,9 @@ pub fn parse_type<Iter>(&mut self, module: &mut Module, iter: &mut Iter) -> Resu
     let tp = self.parse_functype(iter)?;
 
     module.types.push(tp);
-
+pp!(before_type_last, self.lookahead);
     self.match_rparen(iter)?;
-p!(self.lookahead);
+pp!(after_type_last, self.lookahead);
     Ok(())
 }
 
@@ -107,6 +107,8 @@ pub fn parse_functype<Iter>(&mut self, iter: &mut Iter) -> Result<FuncType, AstP
                 if let Ok(param_vt) = self.parse_param(iter) {
                     tp.0.push(param_vt);
                 }                        
+            } else {
+                break;
             }
         } else {
             break;
@@ -114,20 +116,17 @@ pub fn parse_functype<Iter>(&mut self, iter: &mut Iter) -> Result<FuncType, AstP
     }
 
     // result
-    loop {
-        if self.is_lparen()? {
-            self.match_lparen(iter)?;
-            if let kw!(Keyword::Param) = self.lookahead {
-                if let Ok(param_vt) = self.parse_param(iter) {
-                    tp.0.push(param_vt);
-                }                        
-            }
-        } else {
-            break;
+    match self.lookahead {
+        tk!(TokenKind::RightParen) => {
+            self.match_rparen(iter)?;
+        },
+        kw!(Keyword::Result) => {
+            if let Ok(result_vt) = self.parse_result(iter) {
+                tp.1.push(result_vt);
+            }                        
         }
+        _ => return Err(self.err())
     }
-
-    self.match_rparen(iter)?;
 
     Ok(tp)
 }

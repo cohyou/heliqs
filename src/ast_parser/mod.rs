@@ -4,7 +4,7 @@ mod module;
 mod ast_iterator;
 
 mod type_parser;
-// mod import_parser;
+mod import_parser;
 // mod table_parser;
 // mod memory_parser;
 // mod global_parser;
@@ -61,19 +61,31 @@ fn parse_module<Iter>(&mut self, iter: &mut Iter) -> Result<Module, AstParseErro
     }
     
     loop {
-        if self.is_lparen()? {
-            self.match_lparen(iter)?;    
-            if let kw!(Keyword::Type) = self.lookahead {            
-                self.parse_type(&mut module, iter)?
-            } else {
-                break;
-            }
+pp!(1, self.lookahead);
+        if !self.is_lparen()? { break; }
+
+        self.match_lparen(iter)?;    
+        if let kw!(Keyword::Type) = self.lookahead {            
+            self.parse_type(&mut module, iter)?;
+pp!(2, self.lookahead);
+        } else {
+            break;
+        }
+    }
+pp!(11, iter.next());
+pp!(12, iter.next());
+    loop {
+pp!(3, self.lookahead);
+        if self.is_rparen()? { break; }
+
+        if let kw!(Keyword::Import) = self.lookahead {
+            self.parse_import(&mut module, iter)?;
         } else {
             break;
         }
     }
 
-    // self.parse_import(&mut module);
+
     // self.parse_table(&mut module);
     // self.parse_memory(&mut module);
     // self.parse_global(&mut module);
@@ -129,9 +141,14 @@ fn is_lparen(&mut self) -> Result<bool, AstParseError> {
     if let Tree::Node(_) = self.lookahead { Ok(true) } else { Ok(false) }
 }
 
+fn is_rparen(&mut self) -> Result<bool, AstParseError> {
+    if let tk!(TokenKind::RightParen) = self.lookahead { Ok(true) } else { Ok(false) }
+}
+
 fn consume<Iter>(&mut self, iter: &mut Iter) -> Result<(), AstParseError>
-    where Iter: Iterator<Item=(&'a Cst, usize)> {
-    self.lookahead = self.next_cst(iter)?; Ok(())
+    where Iter: Iterator<Item=(&'a Cst, usize)> {        
+    self.lookahead = self.next_cst(iter)?; pp!(cnsm, self.lookahead);
+    Ok(())
 }
 
 fn next_cst<Iter>(&mut self, iter: &mut Iter) -> Result<&'a Cst, AstParseError>

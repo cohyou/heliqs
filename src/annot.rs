@@ -10,6 +10,9 @@ impl Loc {
     }
     pub fn newline(&mut self) { self.0 += 1; self.1 = 0; }
     pub fn add_pos(&mut self) { self.1 += 1; }
+    pub fn added(&self, offset: usize) -> Loc {
+        Loc(self.0, self.1 + offset)
+    }
 }
 
 impl Default for Loc {

@@ -4,8 +4,6 @@ use annot::*;
 use lexer::*;
 use super::*;
 
-macro_rules! tk { ($kind:pat) => { Tree::Leaf(Annot{value: $kind, ..}) } }
-
 impl Cst {
     // pub fn list(&self) -> Option<&Vec<Tree<Token>>> {
     //     if let Tree::Node(list) = self { Some(list) } else { None }

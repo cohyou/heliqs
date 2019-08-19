@@ -1,3 +1,5 @@
+use annot::*;
+use lexer::*;
 use cst_parser::*;
 
 enum CstState<'a> {
@@ -39,10 +41,14 @@ fn cst_state(&self) -> Option<CstState<'a>> {
     })
 }
 
+fn nearest_prev_leaf_loc(&self, item: &(&'a Cst, usize)) -> &'a Loc {
+    &Loc(1, 0)
+}
+
 }
 
 impl<'a> Iterator for AstIterator<'a> {
-    type Item = (&'a Cst, usize);
+    type Item = &'a Cst;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.cst_state().map(|state| {
@@ -59,13 +65,26 @@ impl<'a> Iterator for AstIterator<'a> {
                 CstState::Push(child) => {
                     self.lookahead.push( (child, 0) );
                 },
-                CstState::Next => {                
+                CstState::Next => {
                     if let Some(last) = self.lookahead.pop() {
                         self.lookahead.push( (last.0, last.1 + 1) );
-                    }        
+                    }
                 },
             }
         });
-        self.lookahead.last().map(|item| item.clone())
+        self.lookahead.last().map(|item| {
+            pp!(next, item);
+
+            if let (Tree::Node(v), idx) = item {
+                if v.len() == idx.clone() {
+                    let loc = self.nearest_prev_leaf_loc(item).added(1);
+                    &Tree::Leaf(Token::right_paren(loc))
+                } else {
+                    &v[idx.clone()]
+                }
+            } else {
+                panic!("cst in iterator must be node, not leaf")
+            }
+        })
     }
 }
