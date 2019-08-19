@@ -1,3 +1,5 @@
+use instr::*;
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Keyword {
     Module,
@@ -19,6 +21,8 @@ pub enum Keyword {
     AnyFunc,
     Mutable,
     Offset,
+
+    ValType(ValType)
 }
 
 pub fn vec_to_keyword(s: &[u8]) -> Option<Keyword> {
@@ -43,7 +47,19 @@ pub fn vec_to_keyword(s: &[u8]) -> Option<Keyword> {
         b"mut" => Some(Keyword::Mutable),
         b"offset" => Some(Keyword::Offset),
 
+        b"i32" | b"i64" | b"f32" | b"f64" => Some(Keyword::ValType(vec_to_valtype(s))),
+
         _ => None,
+    }
+}
+
+pub fn vec_to_valtype(s: &[u8]) -> ValType {
+    match s {
+        b"i32" => ValType::I32,
+        b"i64" => ValType::I64,
+        b"f32" => ValType::F32,
+        b"f64" => ValType::F64,
+        _ => panic!("vec_to_valtype"),
     }
 }
 

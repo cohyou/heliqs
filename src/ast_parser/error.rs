@@ -10,7 +10,7 @@ use cst_parser::Cst;
 pub enum AstParseError {
     Invalid(Cst),
     StrToNum(Cst),
-    LastItem,
+    LastItem,    
 }
 
 // use lexer::LexError;

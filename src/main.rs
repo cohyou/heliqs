@@ -13,10 +13,16 @@ fn main() {
     match cst_parser.parse(&mut reader) {
         Err(err) => println!("CST PARSE ERROR: {:?}", err),
         Ok(cst) => {
-            println!("CST: {:?}", cst);
+            // println!("CST: {:?}", cst);
 
-            let mut ast_parser = AstParser::new(&cst);
-            match ast_parser.parse() {
+            use heliqs::AstIterator;
+            use heliqs::{Tree, Token, Loc};
+            let mut iter = AstIterator::new(&cst);
+            
+            let rp = Tree::Leaf(Token::right_paren(Loc::default()));
+
+            let mut ast_parser = AstParser::new(&mut iter, &rp);
+            match ast_parser.parse(&mut iter) {
                 Err(err) => println!("AST PARSE ERROR: {:?}", err),
                 Ok(module) => println!("MODULE: {:?}", module),
             }
