@@ -41,7 +41,12 @@ impl<R> Parser<R> where R: Read + Seek {
         parse_optional_id!(self, self.context().funcs);
 
         // typeuse
-        let typeidx = self.parse_typeuse()?;
+        let mut _ft = FuncType::default();
+        let typeidx = self.parse_typeuse(&mut _ft.0, &mut _ft.1)?;
+
+        self.check_typeuse(typeidx, _ft)?;
+
+        self.match_rparen()?;
 
         Ok(ImportDesc::Func(typeidx))
     }
@@ -61,21 +66,3 @@ impl<R> Parser<R> where R: Read + Seek {
         Ok(ImportDesc::Global(global_type))
     }
 }
-
-// fn perse_local(cst: &Cst) -> Option<(Option<&Id>, &ValType)> {
-//     cst.list().and_then(|v| {
-//         let mut v_iter = v.iter();
-
-//         // 'local'
-//         v_iter.next();
-
-//         // id
-//         let mut v_iter_peekable = v_iter.peekable();
-//         let id = make_optional_id!(v_iter_peekable);
-
-//         // ValType
-//         v_iter_peekable.next()
-//         .and_then(|cst| cst.valtype())
-//         .map(|vt| (id, vt))
-//     })
-// }

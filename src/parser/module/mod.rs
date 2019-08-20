@@ -23,7 +23,7 @@ pub struct Module {
 #[derive(Debug)]
 pub struct Import (pub Name, pub Name, pub ImportDesc);
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct Func (
     pub TypeIndex,  // type: typeuse
     pub Vec<ValType>,  // locals: vec(valtype)

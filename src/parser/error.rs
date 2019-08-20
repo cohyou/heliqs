@@ -10,6 +10,7 @@ pub enum ParseError {
     NumCast(Token),
     CantResolveId(Token),
     InvalidTypeuseDef(Token, FuncType, FuncType),
+    InvalidMessage(Token, String),
     LastItem,    
 }
 

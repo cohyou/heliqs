@@ -70,6 +70,10 @@ impl<R> Parser<R> where R: Read + Seek {
         ParseError::Invalid(self.lookahead.clone())
     }
 
+    fn err2(&self, mes: &'static str) -> ParseError {
+        ParseError::InvalidMessage(self.lookahead.clone(), mes.to_string())
+    }
+
     fn parse_module(&mut self) -> Result<Module, ParseError> {
         let mut module = Module::default();
         
@@ -107,7 +111,7 @@ impl<R> Parser<R> where R: Read + Seek {
         parse_fields!(self, Keyword::Data, parse_data, module);
 
         self.match_rparen()?;
-
+p!(self.contexts[0]);
         Ok(module)
     }
 
