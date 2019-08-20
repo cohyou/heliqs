@@ -34,7 +34,7 @@ macro_rules! lex_line_comment { ($this:ident, $reader:expr) => { {
 
 impl<R> Lexer<R> where R: Read + Seek {
 
-pub fn lex_block_comment(&mut self) -> Result<(), LexError>
+pub(super) fn lex_block_comment(&mut self) -> Result<(), LexError>
     where R: Read + Seek {
 
     let mut com_c = self.read()?;
@@ -95,15 +95,6 @@ pub fn lex_block_comment(&mut self) -> Result<(), LexError>
 
         com_c = self.read()?;
     }
-}
-
-
-pub fn read(&mut self) -> Result<u8, LexError> {
-    let mut buf: &mut [u8] = &mut [0;1];    
-    let n = self.reader.read(&mut buf)?;
-
-    if n == 0 { return Ok(0xFF) }    
-    Ok(buf[0])
 }
 
 }

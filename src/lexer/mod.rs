@@ -15,9 +15,9 @@ pub use self::token::*;
 
 #[derive(Debug)]
 pub struct Lexer<R: Read + Seek> {
-    pub reader: R,
-    pub current: u8,
-    pub loc: Loc,
+    reader: R,
+    current: u8,
+    loc: Loc,
 }
 
 pub type LexerResult = Result<Token, LexError>;
@@ -33,10 +33,9 @@ pub fn new(mut reader: R) -> Lexer<R> {
     } else {
         Lexer { reader: reader, current: buf[0], loc: loc }
     }
-
 }
 
-pub fn lex_token(&mut self) -> LexerResult {
+pub fn next_token(&mut self) -> LexerResult {
 
     loop {
         match self.current {
@@ -193,6 +192,14 @@ pub fn lex_token(&mut self) -> LexerResult {
     }
 }
 
+fn read(&mut self) -> Result<u8, LexError> {
+    let mut buf: &mut [u8] = &mut [0;1];    
+    let n = self.reader.read(&mut buf)?;
+
+    if n == 0 { return Ok(0xFF) }    
+    Ok(buf[0])
+}
+
 fn err(&self, c: u8) -> LexError {
     LexError::invalid_char(c, self.loc)
 }
@@ -217,6 +224,6 @@ fn test_lex_token() {
     let mut reader = Cursor::new("(m)");    
 
     let mut lexer = Lexer::new(reader);
-    lexer.lex_token();
-    assert_eq!(lexer.lex_token(), Ok(Token::empty(lexer.loc)));
+    lexer.next_token();
+    assert_eq!(lexer.next_token(), Ok(Token::empty(lexer.loc)));
 }

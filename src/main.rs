@@ -11,7 +11,7 @@ fn main() {
     use heliqs::Lexer;
     use heliqs::TokenKind;
     let mut lexer = Lexer::new(&mut reader);
-    while let Ok(t) = lexer.lex_token() {
+    while let Ok(t) = lexer.next_token() {
         if t.value == TokenKind::Empty {
             break;
         }

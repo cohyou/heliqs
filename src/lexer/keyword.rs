@@ -25,7 +25,7 @@ pub enum Keyword {
     ValType(ValType)
 }
 
-pub fn vec_to_keyword(s: &[u8]) -> Option<Keyword> {
+pub(super) fn vec_to_keyword(s: &[u8]) -> Option<Keyword> {
     match s {
         b"module" => Some(Keyword::Module),
 
@@ -53,7 +53,7 @@ pub fn vec_to_keyword(s: &[u8]) -> Option<Keyword> {
     }
 }
 
-pub fn vec_to_valtype(s: &[u8]) -> ValType {
+fn vec_to_valtype(s: &[u8]) -> ValType {
     match s {
         b"i32" => ValType::I32,
         b"i64" => ValType::I64,

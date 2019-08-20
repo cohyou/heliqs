@@ -3,7 +3,7 @@ use super::*;
 
 impl<R> Lexer<R> where R: Read + Seek {
 
-pub fn lex_string(&mut self) -> LexerResult {
+pub(super) fn lex_string(&mut self) -> LexerResult {
 
     let mut string = vec![];
     let mut string_c = self.read()?;
