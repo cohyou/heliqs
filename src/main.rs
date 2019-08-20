@@ -8,16 +8,24 @@ fn main() {
     let file_name = &args[1];
     let mut reader = File::open(file_name).unwrap();
 
-    use heliqs::Lexer;
-    use heliqs::TokenKind;
-    let mut lexer = Lexer::new(&mut reader);
-    while let Ok(t) = lexer.next_token() {
-        if t.value == TokenKind::Empty {
-            break;
-        }
-        p!(t);
+    // use heliqs::Lexer;
+    // use heliqs::TokenKind;
+    // let mut lexer = Lexer::new(&mut reader);
+    // while let Ok(t) = lexer.next_token() {
+    //     if t.value == TokenKind::Empty {
+    //         break;
+    //     }
+    //     p!(t);
+    // }
+
+    use heliqs::Parser;
+    let mut parser = Parser::new(reader);
+    match parser.parse() {
+        Ok(module) => println!("MODULE: {:?}", module),
+        Err(err) => println!("PARSE ERROR: {:?}", err),
     }
 
+    
     // use heliqs::{CstParser, AstParser};
     // let mut cst_parser = CstParser::new(&mut reader);
     // match cst_parser.parse(&mut reader) {

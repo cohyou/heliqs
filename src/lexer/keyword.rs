@@ -21,6 +21,7 @@ pub enum Keyword {
     AnyFunc,
     Mutable,
     Offset,
+    FuncRef,
 
     ValType(ValType)
 }
@@ -46,6 +47,7 @@ pub(super) fn vec_to_keyword(s: &[u8]) -> Option<Keyword> {
         b"anyfunc" => Some(Keyword::AnyFunc),
         b"mut" => Some(Keyword::Mutable),
         b"offset" => Some(Keyword::Offset),
+        b"funcref" => Some(Keyword::FuncRef),
 
         b"i32" | b"i64" | b"f32" | b"f64" => Some(Keyword::ValType(vec_to_valtype(s))),
 
