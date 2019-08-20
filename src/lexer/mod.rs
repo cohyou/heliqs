@@ -14,28 +14,29 @@ pub use self::string::*;
 pub use self::token::*;
 
 #[derive(Debug)]
-pub struct Lexer {
+pub struct Lexer<R: Read + Seek> {
+    pub reader: R,
     pub current: u8,
     pub loc: Loc,
 }
 
 pub type LexerResult = Result<Token, LexError>;
 
-impl Lexer {
+impl<R> Lexer<R> where R: Read + Seek {
 
-pub fn new(reader: &mut (impl Read + Seek)) -> Lexer {
+pub fn new(mut reader: R) -> Lexer<R> {
     let loc = Loc::default();
     let mut buf: &mut [u8] = &mut [0;1];
     let n = reader.read(&mut buf).unwrap();
     if n == 0 {
-        Lexer { current: 0xFF, loc: loc }
+        Lexer { reader: reader, current: 0xFF, loc: loc }
     } else {
-        Lexer { current: buf[0], loc: loc }
+        Lexer { reader: reader, current: buf[0], loc: loc }
     }
 
 }
 
-pub fn lex_token(&mut self, reader: &mut (impl Read + Seek)) -> LexerResult {
+pub fn lex_token(&mut self) -> LexerResult {
 
     loop {
         match self.current {
@@ -55,16 +56,16 @@ pub fn lex_token(&mut self, reader: &mut (impl Read + Seek)) -> LexerResult {
             // line comment
             b';' => {
                 self.loc.add_pos();
-                lex_line_comment!(self, reader);
+                lex_line_comment!(self, self.reader);
             },
 
             // keyword
             b'a' ... b'z' => {
                 self.loc.add_pos();
-                let new_loc = self.loc.clone();
+                let new_loc = self.loc;
 
                 let mut keyword = vec![self.current];
-                let mut keyword_c = self.read(reader)?;
+                let mut keyword_c = self.read()?;
                 loop {
                     if is_idchar(keyword_c) {
                         self.loc.add_pos();
@@ -73,11 +74,11 @@ pub fn lex_token(&mut self, reader: &mut (impl Read + Seek)) -> LexerResult {
                         self.current = keyword_c;
                         break;
                     }
-                    keyword_c = self.read(reader)?;
+                    keyword_c = self.read()?;
                 }
 
                 return vec_to_keyword(keyword.as_slice())
-                .map_or(Ok(Token::reserved(keyword, new_loc.clone())),
+                .map_or(Ok(Token::reserved(keyword, new_loc)),
                 |kw| Ok(Token::keyword(kw, new_loc)))
             },
 
@@ -87,12 +88,12 @@ pub fn lex_token(&mut self, reader: &mut (impl Read + Seek)) -> LexerResult {
 
                 let mut un_c = self.current;
                 if self.current == b'0' {
-                    un_c = self.read(reader)?;
+                    un_c = self.read()?;
                     if un_c == b'x' {
                         self.loc.add_pos();
                         // hexnum
-                        self.current = self.read(reader)?;
-                        return Ok(Token::number_u(0, self.loc.clone()))
+                        self.current = self.read()?;
+                        return Ok(Token::number_u(0, self.loc))
                     }
                 }
 
@@ -112,33 +113,33 @@ pub fn lex_token(&mut self, reader: &mut (impl Read + Seek)) -> LexerResult {
                         b'7' => { self.loc.add_pos(); num = num * 10 + 7; },
                         b'8' => { self.loc.add_pos(); num = num * 10 + 8; },
                         b'9' => { self.loc.add_pos(); num = num * 10 + 9; },
-                        0xFF => return Err(LexError::eof(&self.loc)),
+                        0xFF => return Err(LexError::eof(self.loc)),
                         _ => break,
                     }
-                    num_c = self.read(reader)?;
+                    num_c = self.read()?;
                 }
 
                 self.current = num_c;
-                return Ok(Token::number_u(num, self.loc.clone()))
+                return Ok(Token::number_u(num, self.loc))
             },
 
             // number (sN or fN)
-            b'+' | b'-' => return Ok(Token::number_u(0, self.loc.clone())),
+            b'+' | b'-' => return Ok(Token::number_u(0, self.loc)),
 
             // string
             b'"' => {
                 self.loc.add_pos();
-                return self.lex_string(reader);
+                return self.lex_string();
             },
 
             // id        
             b'$' => {
                 self.loc.add_pos();
 
-                let new_loc = self.loc.clone();
+                let new_loc = self.loc;
 
                 let mut id = vec![];
-                let mut id_c = self.read(reader)?;
+                let mut id_c = self.read()?;
                 loop {
                     if is_idchar(id_c) {
                         self.loc.add_pos();
@@ -147,7 +148,7 @@ pub fn lex_token(&mut self, reader: &mut (impl Read + Seek)) -> LexerResult {
                         self.current = id_c;
                         break;
                     }
-                    id_c = self.read(reader)?;
+                    id_c = self.read()?;
                 }
 
                 let res = String::from_utf8(id.to_vec())?;                
@@ -157,39 +158,43 @@ pub fn lex_token(&mut self, reader: &mut (impl Read + Seek)) -> LexerResult {
             // left paren or start of block comment
             b'(' => {
                 self.loc.add_pos();
-                let c = self.read(reader)?;
+                let c = self.read()?;
 
                 if c != b';' {
                     // left paren
                     self.current = c;
-                    return Ok(Token::left_paren(self.loc.clone()));
+                    return Ok(Token::left_paren(self.loc));
                 }
                 self.loc.add_pos();
 
                 // block comment
-                self.lex_block_comment(reader)?;
+                self.lex_block_comment()?;
             },
 
             // right paren
             b')' => {
                 self.loc.add_pos();
-                self.current = self.read(reader)?;
+                self.current = self.read()?;
                 // println!("self.current: {:?}", self.current);
-                return Ok(Token::right_paren(self.loc.clone()));
+                return Ok(Token::right_paren(self.loc));
             },
 
             // reserved
-            _ if is_idchar(self.current) => return Ok(Token::reserved(vec![], self.loc.clone())),
+            _ if is_idchar(self.current) => return Ok(Token::reserved(vec![], self.loc)),
 
             // EOF
-            0xFF => return Ok(Token::empty(self.loc.clone())),
+            0xFF => return Ok(Token::empty(self.loc)),
 
             // invalid
-            _ => return Err(LexError::invalid_char(self.current, self.loc.clone())),
+            _ => return Err(self.err(self.current)),
         };
 
-        self.current = self.read(reader)?;
+        self.current = self.read()?;
     }
+}
+
+fn err(&self, c: u8) -> LexError {
+    LexError::invalid_char(c, self.loc)
 }
 
 }
@@ -211,7 +216,7 @@ fn test_lex_token() {
     // let mut reader = Cursor::new("\r  (; comment ;) (   module)");
     let mut reader = Cursor::new("(m)");    
 
-    let mut lexer = Lexer::new(&mut reader);
-    lexer.lex_token(&mut reader);
-    assert_eq!(lexer.lex_token(&mut reader), Ok(Token::empty(lexer.loc)));
+    let mut lexer = Lexer::new(reader);
+    lexer.lex_token();
+    assert_eq!(lexer.lex_token(), Ok(Token::empty(lexer.loc)));
 }

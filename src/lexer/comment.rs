@@ -2,11 +2,10 @@ use std::io::{Read, Seek};
 use super::error::*;
 use super::Lexer;
 
-// <R>(reader: &mut R, loc: &mut Loc) -> LexerResult where R: Read + Seek {}
-macro_rules! lex_line_comment { ($this:ident, $reader:ident) => { {
+macro_rules! lex_line_comment { ($this:ident, $reader:expr) => { {
     let mut buf: &mut [u8] = &mut [0;1];
 
-    let c = $this.read($reader)?;
+    let c = $this.read()?;
     $this.loc.add_pos();  // anyway add pos
     if c == b';' {
         loop {
@@ -14,7 +13,7 @@ macro_rules! lex_line_comment { ($this:ident, $reader:ident) => { {
                 if n == 0 {
                     // end of line comment
                     $this.current = 0xFF;
-                    return Ok(Token::empty($this.loc.clone()));
+                    return Ok(Token::empty($this.loc));
                 }
                 let com_c = buf[0];
                 match com_c {
@@ -27,28 +26,28 @@ macro_rules! lex_line_comment { ($this:ident, $reader:ident) => { {
             }
         }
     } else {
-        return Err(LexError::invalid_char(c, $this.loc.clone()));
+        return Err(LexError::invalid_char(c, $this.loc));
     }
 
 } }
 }
 
-impl Lexer {
+impl<R> Lexer<R> where R: Read + Seek {
 
-pub fn lex_block_comment<R>(&mut self, reader: &mut R) -> Result<(), LexError>
+pub fn lex_block_comment(&mut self) -> Result<(), LexError>
     where R: Read + Seek {
 
-    let mut com_c = self.read(reader)?;
+    let mut com_c = self.read()?;
     loop {
         match com_c {
             // maybe start of child block comment
             b'(' => {
                 self.loc.add_pos();
 
-                let com_c2 = self.read(reader)?;
+                let com_c2 = self.read()?;
                 if com_c2 == b';' {
                     // start child block comment...
-                    self.lex_block_comment(reader)?
+                    self.lex_block_comment()?
                 }
                 com_c = com_c2;
                 continue;
@@ -58,7 +57,7 @@ pub fn lex_block_comment<R>(&mut self, reader: &mut R) -> Result<(), LexError>
             b';' => {
                 self.loc.add_pos();
 
-                let com_c2 = self.read(reader)?;
+                let com_c2 = self.read()?;
                 self.loc.add_pos();  // anyway add pos
                 if com_c2 == b')' {
                     // end of block comment
@@ -80,28 +79,28 @@ pub fn lex_block_comment<R>(&mut self, reader: &mut R) -> Result<(), LexError>
             0x00 ... 0x7F => self.loc.add_pos(),
             0xC2 ... 0xDF | 0xE0 ... 0xEF => {
                 self.loc.add_pos();
-                self.read(reader)?;
+                self.read()?;
             },
             0xF0 ... 0xF7 => {
                 self.loc.add_pos();
-                self.read(reader)?;
-                self.read(reader)?;                
+                self.read()?;
+                self.read()?;                
             },
 
             // EOF
-            0xFF => return Err(LexError::eof(&self.loc)),
+            0xFF => return Err(LexError::eof(self.loc)),
 
             _ => { self.loc.add_pos(); },
         }
 
-        com_c = self.read(reader)?;
+        com_c = self.read()?;
     }
 }
 
 
-pub fn read(&mut self, reader: &mut (impl Read + Seek)) -> Result<u8, LexError> {
+pub fn read(&mut self) -> Result<u8, LexError> {
     let mut buf: &mut [u8] = &mut [0;1];    
-    let n = reader.read(&mut buf)?;
+    let n = self.reader.read(&mut buf)?;
 
     if n == 0 { return Ok(0xFF) }    
     Ok(buf[0])

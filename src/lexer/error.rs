@@ -17,7 +17,7 @@ impl LexError {
         LexError::new(LexErrorKind::InvalidChar(c), loc)
     }
     pub fn io() -> Self { LexError::new(LexErrorKind::Io, Loc::default()) }
-    pub fn eof(loc: &Loc) -> Self { LexError::new(LexErrorKind::Eof, loc.clone()) }
+    pub fn eof(loc: Loc) -> Self { LexError::new(LexErrorKind::Eof, loc) }
 }
 
 use std::io::Error as StdError;

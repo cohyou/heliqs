@@ -1,12 +1,12 @@
 use std::io::{Read, Seek};
 use super::*;
 
-impl Lexer {
+impl<R> Lexer<R> where R: Read + Seek {
 
-pub fn lex_string(&mut self, reader: &mut (impl Read + Seek)) -> LexerResult {
+pub fn lex_string(&mut self) -> LexerResult {
 
     let mut string = vec![];
-    let mut string_c = self.read(reader)?;
+    let mut string_c = self.read()?;
     let mut byte_length_of_codepoint = 0;  // 1 ~ 3
     let mut rest_of_byte_of_char = 0;  // 0 ~ 3
     loop {
@@ -33,7 +33,7 @@ pub fn lex_string(&mut self, reader: &mut (impl Read + Seek)) -> LexerResult {
                             rest_of_byte_of_char = 3;
                             byte_length_of_codepoint = 3;                                        
                         },
-                        _ => return Err(LexError::invalid_char(string_c, self.loc.clone())),
+                        _ => return Err(self.err(string_c)),
                     }
                 } else {
                     match string_c {
@@ -45,19 +45,19 @@ pub fn lex_string(&mut self, reader: &mut (impl Read + Seek)) -> LexerResult {
                                 }
                             }
                         }
-                        _ => return Err(LexError::invalid_char(string_c, self.loc.clone())),
+                        _ => return Err(self.err(string_c)),
                     }
                 }
                 string.push(string_c);
             },
-            _ => return Err(LexError::invalid_char(string_c, self.loc.clone())),
+            _ => return Err(self.err(string_c)),
         }
-        string_c = self.read(reader)?;
+        string_c = self.read()?;
     }
     let res = String::from_utf8(string.to_vec())?;
 
-    self.current = self.read(reader)?;
-    return Ok(Token::string(res, self.loc.clone()))
+    self.current = self.read()?;
+    return Ok(Token::string(res, self.loc))
 }
 
 }

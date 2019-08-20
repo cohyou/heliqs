@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash, Copy)]
 pub struct Loc(pub usize, pub usize);
 
 impl Loc {
