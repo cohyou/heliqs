@@ -22,6 +22,13 @@
   ;; globals
   (global $wowowwow i32)
 
+  ;; funcs
+  (func $fjao)
+  (func $11)
+  (func $fa)
+  (func $afm)
+  (func $aaa)
+
   ;; exports
   (export "t" (table $second))
   (export "m" (memory $aaaaaa))
@@ -31,7 +38,7 @@
   (start 52)
 
   ;; elem
-  (elem 0 (offset) 1 2 3 4 5)
+  (elem 0 (offset) 1 2 3 $afm 5)
 
   ;; data
   (data 4 (offset) "jlac84myrtqp9")

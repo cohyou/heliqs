@@ -8,6 +8,7 @@ mod import_parser;
 mod table_parser;
 mod memory_parser;
 mod global_parser;
+mod func_parser;
 mod export_parser;
 mod elem_parser;
 mod data_parser;
@@ -94,8 +95,8 @@ impl<R> Parser<R> where R: Read + Seek {
         parse_fields!(self, Keyword::Import, parse_import, module);
         parse_fields!(self, Keyword::Table, parse_table, module);
         parse_fields!(self, Keyword::Memory, parse_memory, module);
-        parse_fields!(self, Keyword::Global, parse_global, module);                
-        // self.parse_func(&mut module);
+        parse_fields!(self, Keyword::Global, parse_global, module);
+        parse_fields!(self, Keyword::Func, parse_func, module);                
         parse_fields!(self, Keyword::Export, parse_export, module);  
 
         if let kw!(Keyword::Start) = self.lookahead {

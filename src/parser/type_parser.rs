@@ -1,5 +1,3 @@
-use std::iter::repeat;
-
 use instr::*;
 use super::*;
 
@@ -9,7 +7,7 @@ impl<R> Parser<R> where R: Read + Seek {
         self.match_keyword(Keyword::Type)?;
 
         // type id
-        parse_optional_id!(self, self.context().funcs);
+        parse_optional_id!(self, self.context().types);
 
         // functype
         self.match_lparen()?;
