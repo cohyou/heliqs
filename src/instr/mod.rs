@@ -16,7 +16,7 @@ pub type ResultType = Vec<ValType>;
 // expressionの長さはlimitationとして実装ごとに決定できる
 // ひとまず、usizeにしておこう
 #[derive(Debug, Clone, Default, PartialEq)]
-pub struct Expr(Vec<Instr>);
+pub struct Expr(pub Vec<Instr>);
 
 
 #[derive(Debug, Clone, Default, PartialEq)]

@@ -2,9 +2,15 @@
 mod error;
 mod module;
 
+mod typeuse_parser;
 mod type_parser;
 mod import_parser;
-mod typeuse_parser;
+mod table_parser;
+mod memory_parser;
+mod global_parser;
+mod export_parser;
+mod elem_parser;
+mod data_parser;
 
 use std::io::{Read, Seek};
 use std::convert::TryFrom;
@@ -17,12 +23,31 @@ use lexer::*;
 pub use self::error::*;
 pub use self::module::*;
 pub use self::typeuse_parser::*;
+pub use self::table_parser::*;
+pub use self::global_parser::*;
 
 pub struct Parser<R>
 where R: Read + Seek {
     lexer: Lexer<R>,
     lookahead: Token,
     contexts: Vec<Context>,
+}
+
+macro_rules! parse_fields {
+    ($this:ident, $kw:pat, $parse_func:ident, $module:ident) => {
+        loop {
+            match $this.lookahead {
+                tk!(TokenKind::RightParen) => break,
+                kw!($kw) => {
+                    $this.$parse_func(&mut $module)?;
+                    if $this.is_lparen()? {
+                        $this.consume()?;
+                    }
+                },
+                _ => break,
+            }
+        }
+    };
 }
 
 impl<R> Parser<R> where R: Read + Seek {
@@ -55,7 +80,6 @@ impl<R> Parser<R> where R: Read + Seek {
         }
         
         loop {
-    
             if !self.is_lparen()? { break; }
 
             self.match_lparen()?;    
@@ -66,33 +90,36 @@ impl<R> Parser<R> where R: Read + Seek {
                 break;
             }
         }
-        loop {
-    
-            match self.lookahead {
-                tk!(TokenKind::RightParen) => break,
-                kw!(Keyword::Import) => {
-                    self.parse_import(&mut module)?;
-                    if self.is_lparen()? {
-                        self.consume()?;
-                    }
-                },
-                _ => return Err(self.err()),
-            }
-        }
 
-
-        // self.parse_table(&mut module);
-        // self.parse_memory(&mut module);
-        // self.parse_global(&mut module);
+        parse_fields!(self, Keyword::Import, parse_import, module);
+        parse_fields!(self, Keyword::Table, parse_table, module);
+        parse_fields!(self, Keyword::Memory, parse_memory, module);
+        parse_fields!(self, Keyword::Global, parse_global, module);                
         // self.parse_func(&mut module);
-        // self.parse_export(&mut module);
-        // self.parse_start(&mut module);
-        // self.parse_elem(&mut module);
-        // self.parse_data(&mut module);
+        parse_fields!(self, Keyword::Export, parse_export, module);  
+
+        if let kw!(Keyword::Start) = self.lookahead {
+            self.parse_start(&mut module)?;
+        }
+        self.match_lparen()?;
+        parse_fields!(self, Keyword::Elem, parse_elem, module);
+        parse_fields!(self, Keyword::Data, parse_data, module);
 
         self.match_rparen()?;
 
         Ok(module)
+    }
+
+    fn parse_start(&mut self, module: &mut Module) -> Result<(), ParseError> {        
+        self.match_keyword(Keyword::Start)?;
+
+        // func id
+        let funcidx = self.resolve_id(&self.contexts[0].funcs.clone())?;
+        module.start = Some(Start(funcidx));
+
+        self.match_rparen()?;
+
+        Ok(())
     }
 
     fn match_keyword(&mut self, matching: Keyword) -> Result<(), ParseError> {
@@ -134,6 +161,14 @@ impl<R> Parser<R> where R: Read + Seek {
     }
 
     fn parse_name(&mut self) -> Result<Name, ParseError> {
+        self.parse_string()
+    }
+
+    fn parse_data_string(&mut self) -> Result<DataString, ParseError> {
+        self.parse_string()
+    }
+
+    fn parse_string(&mut self) -> Result<String, ParseError> {
         if let tk!(TokenKind::String(s)) = &self.lookahead {            
             let res = Ok(s.clone());
             self.consume()?;
@@ -166,10 +201,34 @@ impl<R> Parser<R> where R: Read + Seek {
         }
     }
 
-    fn resolve_id(&mut self, from: &Vec<Option<Id>>) -> Result<TypeIndex, ParseError> {
+    fn parse_limits(&mut self) -> Result<Limits, ParseError> {
+        let mut limits = Limits::default();
+
+        // min
+        limits.min = self.parse_num::<u32>()?;
+
+        // max(optional)
+        if let nm!(Number::Unsigned(_)) = &self.lookahead {            
+            limits.max = Some(self.parse_num::<u32>()?);
+        }        
+
+        Ok(limits)
+    }
+
+    fn parse_offset(&mut self) -> Result<Expr, ParseError> {        
+        self.match_keyword(Keyword::Offset)?;
+
+        // expr
+
+        self.match_rparen()?;
+
+        Ok(Expr(vec![]))
+    }
+
+    fn resolve_id(&mut self, from: &Vec<Option<Id>>) -> Result<u32, ParseError> {
         match &self.lookahead {
             nm!(Number::Unsigned(n)) => {
-                let res = TypeIndex::try_from(n.clone())?;
+                let res = u32::try_from(n.clone())?;
                 self.consume()?;
                 Ok(res)
             },
@@ -185,7 +244,7 @@ impl<R> Parser<R> where R: Read + Seek {
                     }
                 ) {
                     self.consume()?;
-                    Ok(TypeIndex::try_from(idx)?)
+                    Ok(u32::try_from(idx)?)
                 } else {
                     Err(ParseError::CantResolveId(self.lookahead.clone()))
                 }

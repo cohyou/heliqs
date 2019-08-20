@@ -31,7 +31,7 @@ pub struct Func (
 );
 
 #[derive(Debug)]
-pub struct Table(TableType);
+pub struct Table(pub TableType);
 
 #[derive(Debug, Default)]
 pub struct Memory(pub MemType);

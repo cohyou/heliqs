@@ -18,7 +18,9 @@ impl<R> Parser<R> where R: Read + Seek {
         let import_desc = self.parse_import_desc()?;
 
         module.imports.push(Import(import_module, import_name, import_desc));
+
         self.match_rparen()?;
+        
         Ok(())
     }
 
@@ -45,73 +47,17 @@ impl<R> Parser<R> where R: Read + Seek {
     }
 
     fn parse_import_desc_table(&mut self) -> Result<ImportDesc, ParseError> {
-        let mut table_type = TableType{ limits: Limits{min: 0, max: None}, elem_type: ElemType::FuncRef };
-        self.match_keyword(Keyword::Table)?;
-
-        // table id
-        parse_optional_id!(self, self.context().tables);
-
-        // limits
-        table_type.limits = self.parse_limits()?;
-
-        // 'funcref'
-        self.match_keyword(Keyword::FuncRef)?;
-
-        self.match_rparen()?;
+        let table_type = self.parse_table_type()?;
         Ok(ImportDesc::Table(table_type))
     }
 
     fn parse_import_desc_memory(&mut self) -> Result<ImportDesc, ParseError> {        
-        self.match_keyword(Keyword::Memory)?;
-
-        // mem id
-        parse_optional_id!(self, self.context().mems);
-
-        let limits = self.parse_limits()?;
-
-        self.match_rparen()?;
-
-        Ok(ImportDesc::Mem(MemType(limits)))
-    }
-
-    fn parse_limits(&mut self) -> Result<Limits, ParseError> {
-        let mut limits = Limits::default();
-
-        // min
-        limits.min = self.parse_num::<u32>()?;
-
-        // max(optional)
-        if let nm!(Number::Unsigned(_)) = &self.lookahead {            
-            limits.max = Some(self.parse_num::<u32>()?);
-        }        
-
-        Ok(limits)
+        let mem_type = self.parse_memory_type()?;
+        Ok(ImportDesc::Mem(mem_type))
     }
 
     fn parse_import_desc_global(&mut self) -> Result<ImportDesc, ParseError> {        
-        self.match_keyword(Keyword::Global)?;
-
-        // global id
-        parse_optional_id!(self, self.context().globals);
-
-        // mutablity
-        let mutablity = Mutablity::Const;
-
-        // valtype
-        let vt = if self.is_lparen()? {
-            self.match_lparen()?;
-            self.match_keyword(Keyword::Mutable)?;
-            let vt = self.parse_valtype()?;
-            self.match_rparen()?;
-            vt 
-        } else {
-            self.parse_valtype()?
-        };
-
-        let global_type = GlobalType(mutablity, vt);
-
-        self.match_rparen()?;
-
+        let global_type = self.parse_global_type()?;
         Ok(ImportDesc::Global(global_type))
     }
 }
