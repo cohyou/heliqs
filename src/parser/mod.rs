@@ -12,6 +12,7 @@ mod func_parser;
 mod export_parser;
 mod elem_parser;
 mod data_parser;
+mod expr_parser;
 
 use std::io::{Read, Seek};
 use std::convert::TryFrom;
@@ -26,6 +27,7 @@ pub use self::module::*;
 pub use self::typeuse_parser::*;
 pub use self::table_parser::*;
 pub use self::global_parser::*;
+pub use self::expr_parser::*;
 
 pub struct Parser<R>
 where R: Read + Seek {
@@ -55,9 +57,9 @@ impl<R> Parser<R> where R: Read + Seek {
         ParseError::Invalid(self.lookahead.clone())
     }
 
-    // fn err2(&self, mes: &'static str) -> ParseError {
-    //     ParseError::InvalidMessage(self.lookahead.clone(), mes.to_string())
-    // }
+    fn err2(&self, mes: &'static str) -> ParseError {
+        ParseError::InvalidMessage(self.lookahead.clone(), mes.to_string())
+    }
 
     fn parse_module(&mut self) -> Result<(), ParseError> {
 
@@ -203,10 +205,11 @@ impl<R> Parser<R> where R: Read + Seek {
         self.match_keyword(Keyword::Offset)?;
 
         // expr
+        let expr = self.parse_expr()?;
 
         self.match_rparen()?;
 
-        Ok(Expr(vec![]))
+        Ok(expr)
     }
 
     fn resolve_id(&mut self, from: &Vec<Option<Id>>) -> Result<u32, ParseError> {

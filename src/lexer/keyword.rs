@@ -84,13 +84,13 @@ fn vec_to_instr(s: &[u8]) -> Option<Instr> {
        b"drop" => Some(Instr::Drop),
        b"select" => Some(Instr::Select),
 
-       b"get_local" => Some(Instr::GetLocal(0)),
-       b"set_local" => Some(Instr::SetLocal(0)),
-       b"tee_local" => Some(Instr::TeeLocal(0)),
-       b"get_global" => Some(Instr::GetGlobal(0)),
-       b"set_global" => Some(Instr::SetGlobal(0)),
+       b"local.get" => Some(Instr::LocalGet(0)),
+       b"local.set" => Some(Instr::LocalSet(0)),
+       b"local.tee" => Some(Instr::LocalTee(0)),
+       b"global.get" => Some(Instr::GlobalGet(0)),
+       b"global.set" => Some(Instr::GlobalSet(0)),
 
-        // Memory Instructions
+       // Memory Instructions
        b"i32.load" => Some(Instr::I32Load(memarg)),
        b"i64.load" => Some(Instr::I64Load(memarg)),
        b"f32.load" => Some(Instr::F32Load(memarg)),

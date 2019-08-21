@@ -19,10 +19,10 @@ pub type ResultType = Vec<ValType>;
 pub struct Expr(pub Vec<Instr>);
 
 
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Clone, Default, PartialEq)]
 pub struct MemArg {
-    align: u32,
-    offset: u32,
+    pub align: u32,
+    pub offset: u32,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -54,11 +54,11 @@ pub enum Instr {
     Select,
 
     // Variable Instructions
-    GetLocal(LocalIndex),
-    SetLocal(LocalIndex),
-    TeeLocal(LocalIndex),
-    GetGlobal(GlobalIndex),
-    SetGlobal(GlobalIndex),
+    LocalGet(LocalIndex),
+    LocalSet(LocalIndex),
+    LocalTee(LocalIndex),
+    GlobalGet(GlobalIndex),
+    GlobalSet(GlobalIndex),
 
     // Memory Instructions
     I32Load(MemArg),

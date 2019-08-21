@@ -30,3 +30,7 @@ macro_rules! kw { ($kw:pat) => {
 macro_rules! nm { ($nm:pat) => {
     Annot{value: TokenKind::Number($nm), ..}
 } }
+
+macro_rules! instr { ($instr:pat) => {
+    Annot{ value: TokenKind::Keyword(Keyword::Instr($instr)), .. }
+} }

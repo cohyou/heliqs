@@ -5,8 +5,12 @@ impl<R> Parser<R> where R: Read + Seek {
 
     pub(super) fn parse_global(&mut self) -> Result<(), ParseError> {
         let global_type = self.parse_global_type()?;
+
+        let expr = self.parse_expr()?;
         
-        self.module.globals.push(Global(global_type, Expr(vec![]) ));
+        self.module.globals.push(Global(global_type, expr));
+
+        self.match_rparen()?;
 
         Ok(())
     }
@@ -32,8 +36,6 @@ impl<R> Parser<R> where R: Read + Seek {
         };
 
         let global_type = GlobalType(mutablity, vt);
-
-        self.match_rparen()?;
 
         Ok(global_type)
     }

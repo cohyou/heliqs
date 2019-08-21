@@ -24,6 +24,7 @@ impl<R> Parser<R> where R: Read + Seek {
         });
 
         // Expr
+        func.2 = self.parse_expr()?;
 
         self.module.funcs.push(func);
 
