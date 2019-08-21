@@ -11,7 +11,7 @@ impl Debug for Number {
    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
        match &self {
            Number::Unsigned(num) => write!(f, "{:?}", num),
-           _ => write!(f, "{:?}", self)
+        //    _ => write!(f, "{:?}", self)
        }        
     }
 }

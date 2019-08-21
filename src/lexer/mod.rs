@@ -256,14 +256,3 @@ fn is_idchar(c: u8) -> bool {
         _ => false,
     }
 }
-
-#[test]
-fn test_lex_token() {
-    use std::io::Cursor;
-    // let mut reader = Cursor::new("\r  (; comment ;) (   module)");
-    let mut reader = Cursor::new("(m)");
-
-    let mut lexer = Lexer::new(reader);
-    lexer.next_token();
-    assert_eq!(lexer.next_token(), Ok(Token::empty(lexer.loc)));
-}

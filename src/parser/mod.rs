@@ -53,14 +53,6 @@ impl<R> Parser<R> where R: Read + Seek {
         self.parse_module()
     }
 
-    fn err(&self) -> ParseError {
-        ParseError::Invalid(self.lookahead.clone())
-    }
-
-    fn err2(&self, mes: &'static str) -> ParseError {
-        ParseError::InvalidMessage(self.lookahead.clone(), mes.to_string())
-    }
-
     fn parse_module(&mut self) -> Result<(), ParseError> {
 
         self.match_keyword(Keyword::Module)?;
@@ -90,8 +82,6 @@ impl<R> Parser<R> where R: Read + Seek {
         parse_field!(self, Data, self.parse_data()?);        
 
         self.match_rparen()?;
-
-        p!(self.contexts[0]);
 
         Ok(())
     }
@@ -249,5 +239,13 @@ impl<R> Parser<R> where R: Read + Seek {
         self.lookahead = self.lexer.next_token()?;
         // p!(self.lookahead);
         Ok(())
+    }
+
+    fn err(&self) -> ParseError {
+        ParseError::Invalid(self.lookahead.clone())
+    }
+
+    fn err2(&self, mes: &'static str) -> ParseError {
+        ParseError::InvalidMessage(self.lookahead.clone(), mes.to_string())
     }
 }

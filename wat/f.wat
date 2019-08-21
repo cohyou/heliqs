@@ -1,9 +1,10 @@
 (module $moddd
   ;; types
   (type $tp1 (func))
-  ;; (type $tp2 (func (param i32) (param i64)))
-  ;; (type $tp3 (func (param f32) (param f64) (result i32)))
-  ;; (type (func (result i64)))
+  (type $tp2 (func (param i32)))
+  (type $tp3 (func (param i32) (param i64)))
+  (type $tp4 (func (param i32) (param i64) (result f32)))
+  (type $tp5 (func (result f64)))
   ;; (type $uniop (func (param i64)))
 
   ;; imports
@@ -21,7 +22,7 @@
   ;; (import "imp_global" "2" (global (mut i32)))
 
   ;; tables
-  ;; (table $second 43 funcref)
+  (table $second 43 funcref)
 
   ;; mems
   ;; (memory $aaaaaa 98)
@@ -47,8 +48,26 @@
     (local i32)
     (local $l i32)
 
+    ;; block $label (result f64)
+    ;;   nop br $label 
+    ;;   br_table 3 6 89 798 $label
+    ;;   block $inner (result f64)
+    ;;   end
+    ;; end
+    ;; loop $label_loop (result f64) nop br $label_loop end
+    ;; if $if_label (result i32) else $if_label nop end $if_label
+    ;; br 0
+    ;; br $if_label
+    ;; br_if 0
+    ;; br_if $lbl
+    
     ;; call 0
     ;; call $f1
+    call_indirect (type $tp1)
+    call_indirect (type $tp2) (param i32)
+    call_indirect (type $tp3) (param i32) (param i64)
+    call_indirect (type $tp4) (param i32) (param i64) (result f32)
+    call_indirect (type $tp5) (result f64)
 
     ;; local.get 1
     ;; local.get $l

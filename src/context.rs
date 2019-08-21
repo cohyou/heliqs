@@ -45,12 +45,7 @@ fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
       }
    }
    if self.locals.len() > 0 { writeln!(f, "  locals: {:?}", self.locals)?; }
-   if self.labels.len() > 0 {
-      writeln!(f, "  labels:")?;
-      for label in &self.labels {
-         writeln!(f, "    {:?}", label)?;
-      }
-   }
+   if self.labels.len() > 0 { writeln!(f, "  labels: {:?}", self.labels)?; }
    if self.typedefs.len() > 0 {
       writeln!(f, "  typedefs:")?;
       for typedef in &self.typedefs {

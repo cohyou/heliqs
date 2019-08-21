@@ -29,7 +29,8 @@ macro_rules! instr_func {
 
 macro_rules! instr_label {
     ($this:ident, $v:ident, $instr:ident) => {{
-        instr_id!($this, $v, $instr, $this.contexts[1].labels);
+        let len = $this.contexts.len();
+        instr_id!($this, $v, $instr, $this.contexts[len - 1].labels);
     }};
 }
 
@@ -49,25 +50,56 @@ macro_rules! instr_memarg {
     ($this: ident, $v:ident, $align:expr) => {{
         $this.consume()?;
         let memarg = MemArg { align: $align, offset: 0 };
-        $v.push(Instr::I32Load(memarg));        
+        $v.push(Instr::I32Load(memarg));
     }};
 }
 
-impl<R> Parser<R> where R: Read + Seek {    
+macro_rules! instr_one_block {
+    ($this:ident, $v:ident, $instr:ident) => {{
+        $this.consume()?;
+
+        // label id
+        let len = $this.contexts.len();
+        let mut new_label_context = $this.contexts[len - 1].clone();
+        parse_optional_label_id!($this, new_label_context.labels);
+        $this.contexts.push(new_label_context);
+
+        $this.match_lparen()?;
+
+        // resulttype
+        let vt = $this.parse_result()?;
+
+        // expr
+        let expr = $this.parse_expr()?;
+
+        $this.match_keyword(Keyword::End)?;
+
+        // label id(repeated)
+        $this.check_label_id()?;
+
+        p!($this.contexts[len]);
+        $this.contexts.pop();
+
+        $v.push(Instr::$instr(vec![vt], expr));
+    }};
+}
+
+impl<R> Parser<R> where R: Read + Seek {
+
     pub(super) fn parse_expr(&mut self) -> Result<Expr, ParseError> {
         let mut instrs = vec![];
 
         loop {
             match &self.lookahead {
                 // Control Instructions
-                // instr!(Instr::Block(_, _) => ,
-                // instr!(Instr::Loop(_, _) => ,
-                // instr!(Instr::If(_, _, _) => ,
-                // instr!(Instr::Br(_) => instr_label!(self, instrs, BrIf),
-                // instr!(Instr::BrIf(_) => instr_label!(self, instrs, BrIf),
-                // instr!(Instr::BrTable(_, _) => ,
+                instr!(Instr::Block(_, _)) => instr_one_block!(self, instrs, Block),
+                instr!(Instr::Loop(_, _)) => instr_one_block!(self, instrs, Loop),
+                instr!(Instr::If(_, _, _)) => self.parse_if(&mut instrs)?,
+                instr!(Instr::Br(_)) => instr_label!(self, instrs, BrIf),
+                instr!(Instr::BrIf(_)) => instr_label!(self, instrs, BrIf),
+                instr!(Instr::BrTable(_, _)) => self.parse_br_table(&mut instrs)?,
                 instr!(Instr::Call(_)) => instr_func!(self, instrs, Call),
-                // instr!(Instr::CallIndirect(_)) => instr_func!(self, instrs, CallIndirect),
+                instr!(Instr::CallIndirect(_)) => self.parse_call_indirect(&mut instrs)?,
 
                 // Variable Instructions
                 instr!(Instr::LocalGet(_)) => instr_local!(self, instrs, LocalGet),
@@ -111,7 +143,8 @@ impl<R> Parser<R> where R: Read + Seek {
                     instrs.push(instr.clone());
                     self.consume()?;
                 },
-                tk!(TokenKind::RightParen) => {
+
+                tk!(TokenKind::RightParen) | kw!(Keyword::Else) | kw!(Keyword::End) => {
                     break;
                 }
                 _ => {},
@@ -119,5 +152,115 @@ impl<R> Parser<R> where R: Read + Seek {
         }
 
         Ok(Expr(instrs))
+    }
+
+    fn parse_call_indirect(&mut self, instrs: &mut Vec<Instr>) -> Result<(), ParseError> {
+        self.consume()?;
+
+        let mut _ft = FuncType::default();
+
+        // add local context(for check)
+        self.contexts.push(Context::default());
+
+        let typeidx = self.parse_typeuse(&mut _ft.0, &mut _ft.1)?;
+        self.check_typeuse(typeidx, _ft)?;    
+
+        // check params context (must not include string id)
+        if self.contexts[2].locals.iter().any(|x| x.is_some()) {
+            p!(self.contexts[2].locals);
+            Err(self.err2("call_indirect: params context (must be empty)"))
+        } else {
+            instrs.push(Instr::CallIndirect(typeidx));
+
+            la!(self);p!(self.contexts[2]);
+            self.contexts.pop();
+
+            Ok(())        
+        }        
+    }
+
+    fn parse_if(&mut self, instrs: &mut Vec<Instr>) -> Result<(), ParseError> {
+        self.consume()?;
+
+        // label id
+        let len = self.contexts.len();
+        let mut new_label_context = self.contexts[len - 1].clone();
+        parse_optional_label_id!(self, new_label_context.labels);
+        self.contexts.push(new_label_context);
+
+        self.match_lparen()?;
+
+        // resulttype
+        let vt = self.parse_result()?;
+
+        // expr1
+        let expr1 = self.parse_expr()?;
+
+        self.match_keyword(Keyword::Else)?;
+
+        // check label id(after else)
+        self.check_label_id()?;
+
+        // expr2
+        let expr2 = self.parse_expr()?;
+
+        self.match_keyword(Keyword::End)?;
+
+        // check label id(after end)
+        self.check_label_id()?;
+    
+        p!(self.contexts[len]);
+        self.contexts.pop();
+
+        instrs.push(Instr::If(vec![vt], expr1, expr2));
+
+        Ok(())
+    }
+
+    fn parse_br_table(&mut self, instrs: &mut Vec<Instr>) -> Result<(), ParseError> {
+        self.consume()?;
+
+        let mut labelindices = vec![];
+
+        loop {
+            match &self.lookahead {
+                tk!(TokenKind::Id(_)) => {
+                    let len = self.contexts.len();
+                    let local_id = self.resolve_id(&self.contexts[len - 1].clone().labels)?;
+                    labelindices.push(local_id);
+                },
+                nm!(Number::Unsigned(n)) => {
+                    labelindices.push(*n as u32);
+                    self.consume()?;
+                },
+                _ => break,
+            }
+        }
+
+        if let Some(labelidx) = labelindices.pop() {
+            instrs.push(Instr::BrTable(labelindices, labelidx));
+        } else {
+            return Err(self.err2("br_table"));
+        }
+
+        Ok(())
+    }
+
+    fn check_label_id(&mut self) -> Result<(), ParseError> {
+        if let tk!(TokenKind::Id(s)) = &self.lookahead {
+
+            let contexts_len = self.contexts.len();
+            let len = self.contexts[contexts_len - 1].labels.len();
+            if let Some(label_s) = &self.contexts[contexts_len - 1].labels[len - 1] {
+                if s != label_s {
+                    return Err(self.err2("invalid label of block end"));
+                }
+            } else {
+                return Err(self.err2("invalid label of block end"));
+            }
+            self.consume()?;
+        }
+
+        Ok(())
     }
 }

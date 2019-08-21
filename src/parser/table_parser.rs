@@ -1,4 +1,3 @@
-use instr::*;
 use super::*;
 
 impl<R> Parser<R> where R: Read + Seek {

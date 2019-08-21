@@ -11,6 +11,18 @@ macro_rules! parse_optional_id {
     }
 }
 
+macro_rules! parse_optional_label_id {
+    ($this:ident, $v:expr) => {
+        if let tk!(TokenKind::Id(s)) = &$this.lookahead {
+            let new_s = s.clone();
+            $v.insert(0, Some(new_s));
+            $this.consume()?;
+        } else {
+            $v.push(None);
+        }
+    }
+}
+
 macro_rules! parse_field {
     ($this:ident, $field_type:ident, $f:expr) => {
         if !$this.is_rparen()? {            

@@ -35,7 +35,10 @@ fn parse<R: Read + Seek>(reader: R) {
     let mut parser = Parser::new(reader);
     
     match parser.parse() {
-        Err(err) => println!("PARSE ERROR: {:?}", err),
+        Err(err) => {
+            println!("PARSE ERROR: {:?}", err);
+            return;
+        },
         _ => {},
     };
     println!("CONTEXT: {:?}", parser.contexts[0]);
