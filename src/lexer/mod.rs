@@ -18,7 +18,8 @@ pub struct Lexer<R: Read + Seek> {
     reader: R,
     current: u8,
     loc: Loc,
-    peeked: u8,
+    peeked_byte: u8,
+    peeked_token: Option<Token>,
 }
 
 pub type LexerResult = Result<Token, LexError>;
@@ -29,14 +30,36 @@ pub fn new(mut reader: R) -> Lexer<R> {
     let loc = Loc::default();
     let mut buf: &mut [u8] = &mut [0;1];
     let n = reader.read(&mut buf).unwrap();
-    if n == 0 {
-        Lexer { reader: reader, current: 0xFF, loc: loc, peeked: 0 }
-    } else {
-        Lexer { reader: reader, current: buf[0], loc: loc, peeked: 0 }
+    let current = if n == 0 { 0xFF } else { buf[0] };
+
+    Lexer {
+        reader: reader, 
+        current: current, 
+        loc: loc, 
+        peeked_byte: 0, 
+        peeked_token: None 
     }
 }
 
 pub fn next_token(&mut self) -> LexerResult {
+    if let Some(peeked) = &self.peeked_token {
+        let result = peeked.clone();
+        self.peeked_token = None;
+        Ok(result)
+    } else {
+        self.next_token_internal()
+    }
+}
+
+pub fn peek_token(&mut self) -> LexerResult {
+    if self.peeked_token.is_none() {
+        self.peeked_token = Some(self.next_token_internal()?);
+    }
+    let result = self.peeked_token.clone();
+    Ok(result.unwrap())
+}
+
+fn next_token_internal(&mut self) -> LexerResult {
 
     loop {
         match self.current {
@@ -193,23 +216,23 @@ pub fn next_token(&mut self) -> LexerResult {
 }
 
 fn read(&mut self) -> Result<u8, LexError> {
-    if self.peeked == 0 {
-        self.read_inner()
+    if self.peeked_byte == 0 {
+        self.read_internal()
     } else {
-        let peeked = self.peeked;
-        self.peeked = 0;
+        let peeked = self.peeked_byte;
+        self.peeked_byte = 0;
         Ok(peeked)
     }    
 }
 
 fn peek(&mut self) -> Result<u8, LexError> {
-    if self.peeked == 0 {
-        self.peeked = self.read()?;
+    if self.peeked_byte == 0 {
+        self.peeked_byte = self.read_internal()?;
     }
-    Ok(self.peeked)
+    Ok(self.peeked_byte)
 }
 
-fn read_inner(&mut self) -> Result<u8, LexError> {
+fn read_internal(&mut self) -> Result<u8, LexError> {
     let mut buf: &mut [u8] = &mut [0;1];
     let n = self.reader.read(&mut buf)?;
 

@@ -30,6 +30,7 @@
   ;; (global $wowowwow i32)
 
   ;; funcs
+  (func $fjao (type 0))
   (func $fjao (type 1))
   ;; (func $11 (type $tp2))
   ;; (func $fa (type 1) (param $p2 i32) (param i64))
