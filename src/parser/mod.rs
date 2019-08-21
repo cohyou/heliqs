@@ -31,38 +31,8 @@ pub struct Parser<R>
 where R: Read + Seek {
     lexer: Lexer<R>,
     lookahead: Token,
-    contexts: Vec<Context>,
+    pub contexts: Vec<Context>,
     pub module: Module,
-}
-
-macro_rules! parse_field {
-    ($this:ident, $field_type:ident, $f:expr) => {
-        if !$this.is_rparen()? {
-            lla!($field_type, $this);
-            if let tk!(TokenKind::LeftParen) = $this.lookahead {
-                $this.consume()?;
-            }
-            loop {
-                if let kw!(Keyword::$field_type) = &$this.lookahead {
-                    { $f }
-                    if let tk!(TokenKind::LeftParen) = $this.lookahead {
-                        let peeked = $this.peek()?;
-                        if let kw!(Keyword::$field_type) = peeked {
-                            $this.consume()?;
-
-                            continue;
-                        } else {
-                            break;
-                        }
-                    } else {
-                        break;
-                    }
-                } else {
-                    break;
-                }
-            }
-        }
-    };
 }
 
 impl<R> Parser<R> where R: Read + Seek {
@@ -85,9 +55,9 @@ impl<R> Parser<R> where R: Read + Seek {
         ParseError::Invalid(self.lookahead.clone())
     }
 
-    fn err2(&self, mes: &'static str) -> ParseError {
-        ParseError::InvalidMessage(self.lookahead.clone(), mes.to_string())
-    }
+    // fn err2(&self, mes: &'static str) -> ParseError {
+    //     ParseError::InvalidMessage(self.lookahead.clone(), mes.to_string())
+    // }
 
     fn parse_module(&mut self) -> Result<(), ParseError> {
 
@@ -97,7 +67,7 @@ impl<R> Parser<R> where R: Read + Seek {
             self.module.id = Some(s.clone());
             self.consume()?;
         }
-lla!(0, self);
+
         parse_field!(self, Type, self.parse_type()?);
         parse_field!(self, Import, self.parse_import()?);
         parse_field!(self, Table, self.parse_table()?);
@@ -105,7 +75,7 @@ lla!(0, self);
         parse_field!(self, Global, self.parse_global()?);
         parse_field!(self, Func, self.parse_func()?);
         parse_field!(self, Export, self.parse_export()?);
-lla!(Start, self);
+
         if !self.is_rparen()? {
             if let tk!(TokenKind::LeftParen) = self.lookahead {
                 self.consume()?;

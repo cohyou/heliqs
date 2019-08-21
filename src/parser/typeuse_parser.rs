@@ -14,47 +14,17 @@ impl<R> Parser<R> where R: Read + Seek {
 
     pub(super) fn parse_signature(&mut self, params: &mut Vec<ValType>, results: &mut Vec<ValType>) -> Result<(), ParseError> {
 
-        // params
-        loop {
-            if self.is_lparen()? {
-                // let peeked = self.lexer.next_token()?;
-                // p!(peeked);
-                self.match_lparen()?;
-                if let kw!(Keyword::Param) = self.lookahead {
-                    
-                    // self.lookahead = peeked;
-                    
-                    if let Ok(param_vt) = self.parse_param() {
-                        params.push(param_vt);
-                    }
-                    
-                    // self.match_lparen()?;
-                } else {
-                    break;
-                }
-            } else {
-                break;
-            }
-        }
+        // params        
+        parse_field!(self, Param, 
+        if let Ok(param_vt) = self.parse_param() {
+            params.push(param_vt);
+        });
 
-        // result
-
-        match self.lookahead {
-            tk!(TokenKind::RightParen) => {
-                // self.match_rparen()?;
-            },
-            kw!(Keyword::Result) => {
-                // self.match_keyword(Keyword::Result)?;
-                if let Ok(result_vt) = self.parse_result() {
-                    results.push(result_vt);
-                }
-                if self.is_lparen()? {
-                    self.match_lparen()?;
-                }
-            }            
-            kw!(Keyword::Local) => {},
-            _ => return Err(self.err2("can not parse result"))
-        }
+        // result        
+        parse_field!(self, Result, 
+        if let Ok(result_vt) = self.parse_result() {
+            results.push(result_vt);
+        });
 
         Ok(())
     }

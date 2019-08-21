@@ -44,12 +44,7 @@ fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
          writeln!(f, "    {:?}", global)?;
       }
    }
-   if self.locals.len() > 0 {
-      writeln!(f, "  locals:")?;
-      for local in &self.locals {
-         writeln!(f, "    {:?}", local)?;
-      }
-   }
+   if self.locals.len() > 0 { writeln!(f, "  locals: {:?}", self.locals)?; }
    if self.labels.len() > 0 {
       writeln!(f, "  labels:")?;
       for label in &self.labels {

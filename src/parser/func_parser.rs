@@ -18,24 +18,16 @@ impl<R> Parser<R> where R: Read + Seek {
         func.0 = self.parse_typeuse(&mut func.1, &mut _results)?;
 
         // locals
-        loop {
-            if let kw!(Keyword::Local) = self.lookahead {
-                if let Ok(local_vt) = self.parse_local() {
-                    func.1.push(local_vt);
-                }
-                if self.is_lparen()? {
-                    self.match_lparen()?;
-                }
-            } else {
-                break;
-            }
-        }
+        parse_field!(self, Local, 
+        if let Ok(local_vt) = self.parse_local() {
+            func.1.push(local_vt);
+        });
 
         // Expr
 
         self.module.funcs.push(func);
-// llh!(context_bf, self);      
-// p!(self.contexts[1]);
+
+        la!(self);p!(self.contexts[1]);
         self.contexts.pop();
         self.match_rparen()?;
 

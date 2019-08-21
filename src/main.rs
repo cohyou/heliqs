@@ -38,7 +38,7 @@ fn parse<R: Read + Seek>(reader: R) {
         Err(err) => println!("PARSE ERROR: {:?}", err),
         _ => {},
     };
-    
+    println!("MODULE: {:?}", parser.contexts[0]);
     println!("MODULE: {:?}", parser.module);
 }
 
