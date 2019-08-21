@@ -9,13 +9,13 @@ enum CstState<'a> {
     Next
 }
 
-pub struct AstIterator<'a> {
+pub struct CstIterator<'a> {
     init: &'a Cst, lookahead: Vec<(&'a Cst, usize)>,
 }
 
-impl<'a> AstIterator<'a> {
+impl<'a> CstIterator<'a> {
     pub fn new(cst: &'a Cst) -> Self {
-        AstIterator { init: cst, lookahead: vec![] }
+        CstIterator { init: cst, lookahead: vec![] }
     }
 
 fn cst_state(&self) -> Option<CstState<'a>> {
@@ -47,7 +47,7 @@ fn nearest_prev_leaf_loc(&self, item: &(&'a Cst, usize)) -> &'a Loc {
 
 }
 
-impl<'a> Iterator for AstIterator<'a> {
+impl<'a> Iterator for CstIterator<'a> {
     type Item = &'a Cst;
 
     fn next(&mut self) -> Option<Self::Item> {
