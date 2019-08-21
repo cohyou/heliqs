@@ -5,7 +5,12 @@ impl Debug for Module {
 fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
    writeln!(f, "{{")?;
    if self.id.is_some() { writeln!(f, "  id: {:?}", self.id)?; }
-   if self.types.len() > 0 { writeln!(f, "  types: {:?}", self.types)?; }
+   if self.types.len() > 0 {
+      writeln!(f, "  types:")?;
+      for tp in &self.types {
+         writeln!(f, "    {:?}", tp)?;
+      }
+   }
    if self.imports.len() > 0 {
       writeln!(f, "  imports:")?;
       for import in &self.imports {

@@ -57,12 +57,12 @@ impl<R> Parser<R> where R: Read + Seek {
         if let tk!(TokenKind::Id(s)) = &self.lookahead {
             if self.contexts.len() == 2 {
                 let new_s = s.clone();
-                self.context().locals.push(Some(new_s));
+                self.contexts[1].locals.push(Some(new_s));
             }
             self.consume()?;
         } else {
             if self.contexts.len() == 2 {
-                self.context().locals.push(None);
+                self.contexts[1].locals.push(None);
             }
         }
 

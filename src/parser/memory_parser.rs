@@ -17,7 +17,7 @@ impl<R> Parser<R> where R: Read + Seek {
         self.match_keyword(Keyword::Memory)?;
 
         // mem id
-        parse_optional_id!(self, self.context().mems);
+        parse_optional_id!(self, self.contexts[0].mems);
 
         let limits = self.parse_limits()?;
 

@@ -7,7 +7,7 @@ impl<R> Parser<R> where R: Read + Seek {
         self.match_keyword(Keyword::Type)?;
 
         // type id
-        parse_optional_id!(self, self.context().types);
+        parse_optional_id!(self, self.contexts[0].types);
 
         // functype
         self.match_lparen()?;

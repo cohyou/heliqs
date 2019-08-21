@@ -247,9 +247,4 @@ impl<R> Parser<R> where R: Read + Seek {
         // p!(self.lookahead);
         Ok(())
     }
-
-    fn context(&mut self) -> &mut Context {
-        let len = self.contexts.len();
-        &mut self.contexts[len - 1]
-    }
 }

@@ -21,13 +21,13 @@
   ;; (import "imp_global" "2" (global (mut i32)))
 
   ;; tables
-  ;; (table $second 43 funcref)
+  (table $second 43 funcref)
 
   ;; mems
-  ;; (memory $aaaaaa 98)
+  (memory $aaaaaa 98)
 
   ;; globals
-  ;; (global $wowowwow i32)
+  (global $wowowwow i32)
 
   ;; funcs
   (func $fjao (type 0))
@@ -45,16 +45,16 @@
 
 
   ;; exports
-  ;; (export "t" (table $second))
-  ;; (export "m" (memory $aaaaaa))
-  ;; (export "g" (global $wowowwow))
+  (export "t" (table $second))
+  (export "m" (memory $aaaaaa))
+  (export "g" (global $wowowwow))
 
   ;; start
-  ;; (start 52)
+  (start 52)
 
   ;; elem
-  ;; (elem 0 (offset) 1 2 3 $afm 5)
+  (elem 0 (offset) 1 2 3 $afm 5)
 
   ;; data
-  ;; (data 4 (offset) "jlac84myrtqp9")
+  (data 4 (offset) "jlac84myrtqp9")
 )
