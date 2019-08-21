@@ -25,7 +25,7 @@ impl<R> Parser<R> where R: Read + Seek {
         let mut functype = FuncType::default();
 
         self.match_keyword(Keyword::Func)?;
-lla!(10, self);        
+
         if !self.is_rparen()? {
             self.parse_signature(&mut functype.0, &mut functype.1)?;
         }        

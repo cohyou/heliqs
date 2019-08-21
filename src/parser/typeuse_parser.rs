@@ -5,7 +5,7 @@ impl<R> Parser<R> where R: Read + Seek {
     pub(super) fn parse_typeuse(&mut self, params: &mut Vec<ValType>, results: &mut Vec<ValType>) -> Result<TypeIndex, ParseError> {
         self.match_lparen()?;
         let typeidx = self.parse_typeuse_typeidx()?;
-        lla!(1, self);
+        
         if !self.is_rparen()? {
             self.parse_signature(params, results)?;
         }
@@ -23,11 +23,11 @@ impl<R> Parser<R> where R: Read + Seek {
                 if let kw!(Keyword::Param) = self.lookahead {
                     
                     // self.lookahead = peeked;
-                    lla!(4, self);
+                    
                     if let Ok(param_vt) = self.parse_param() {
                         params.push(param_vt);
                     }
-                    lla!(5, self);
+                    
                     // self.match_lparen()?;
                 } else {
                     break;
@@ -80,9 +80,9 @@ impl<R> Parser<R> where R: Read + Seek {
     }
 
     pub(super) fn parse_param(&mut self) -> Result<ValType, ParseError> {
-lla!(101, self);
+
         self.match_keyword(Keyword::Param)?;
-lla!(102, self);
+
         // param id
         if let tk!(TokenKind::Id(s)) = &self.lookahead {
             if self.contexts.len() == 2 {

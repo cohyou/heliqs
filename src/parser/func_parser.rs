@@ -16,7 +16,7 @@ impl<R> Parser<R> where R: Read + Seek {
         // typeuse
         let mut _results = vec![];
         func.0 = self.parse_typeuse(&mut func.1, &mut _results)?;
-lla!(2, self);
+
         // locals
         loop {
             if let kw!(Keyword::Local) = self.lookahead {

@@ -7,34 +7,34 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'wasm-engine'",
+            "name": "Debug executable 'heliqs'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=wasm-engine",
-                    "--package=wasm-engine"
+                    "--bin=heliqs",
+                    "--package=heliqs"
                 ],
                 "filter": {
-                    "name": "wasm-engine",
+                    "name": "heliqs",
                     "kind": "bin"
                 }
             },
-            "args": [],
+            "args": ["wat/f.wat", "-l"],
             "cwd": "${workspaceFolder}"
         },
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'wasm-engine'",
+            "name": "Debug unit tests in executable 'heliqs'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=wasm-engine",
-                    "--package=wasm-engine"
+                    "--bin=heliqs",
+                    "--package=heliqs"
                 ],
                 "filter": {
-                    "name": "wasm-engine",
+                    "name": "heliqs",
                     "kind": "bin"
                 }
             },

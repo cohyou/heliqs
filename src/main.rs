@@ -6,26 +6,40 @@ use std::fs::File;
 fn main() {
     let args = env::args().collect::<Vec<String>>();
     let file_name = &args[1];
-    let mut reader = File::open(file_name).unwrap();
+    let reader = File::open(file_name).unwrap();
 
-    // use heliqs::Lexer;
-    // use heliqs::TokenKind;
-    // let mut lexer = Lexer::new(&mut reader);
-    // while let Ok(t) = lexer.next_token() {
-    //     if t.value == TokenKind::Empty {
-    //         break;
-    //     }
-    //     p!(t);
-    // }
+    args.get(2).map(|s|
+        match s.as_ref() {
+            "-l" => lex(reader),
+            "-p" => parse(reader),
+            _ => panic!("invalid option"),
+        }
+    );
+}
 
+use std::io::{Read, Seek};
+fn lex<R: Read + Seek>(mut reader: R) {
+    use heliqs::Lexer;
+    use heliqs::TokenKind;
+    let mut lexer = Lexer::new(&mut reader);
+    while let Ok(t) = lexer.next_token() {
+        if t.value == TokenKind::Empty {
+            break;
+        }
+        p!(t);
+    }
+}
+
+fn parse<R: Read + Seek>(reader: R) {
     use heliqs::Parser;
     let mut parser = Parser::new(reader);
     match parser.parse() {
         Ok(module) => println!("MODULE: {:?}", module),
         Err(err) => println!("PARSE ERROR: {:?}", err),
     }
+}
 
-    
+// fn ast_parse<R: Read + Seek>(mut reader: R) {
     // use heliqs::{CstParser, AstParser};
     // let mut cst_parser = CstParser::new(&mut reader);
     // match cst_parser.parse(&mut reader) {
@@ -46,7 +60,9 @@ fn main() {
     //         }
     //     },
     // }
+// }
 
+// fn run<R: Read + Seek>(mut reader: R) {
     // let mut store = Runtime::init_store();
     // let func_inst = FuncInst::Host { func_type: (vec![ValType::I32], vec![]), host_code: "log".to_string() };
     // store.insts.push(StoreInst::Func(func_inst));
@@ -54,4 +70,4 @@ fn main() {
     // let mut rt = Runtime::new(Some(store));
     // let extern_vals = vec![ExternVal::Func(0)];
     // println!("module instance: {:?}", rt.instantiate(&module, extern_vals));
-}
+// }

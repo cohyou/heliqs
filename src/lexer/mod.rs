@@ -18,6 +18,7 @@ pub struct Lexer<R: Read + Seek> {
     reader: R,
     current: u8,
     loc: Loc,
+    peeked: u8,
 }
 
 pub type LexerResult = Result<Token, LexError>;
@@ -29,9 +30,9 @@ pub fn new(mut reader: R) -> Lexer<R> {
     let mut buf: &mut [u8] = &mut [0;1];
     let n = reader.read(&mut buf).unwrap();
     if n == 0 {
-        Lexer { reader: reader, current: 0xFF, loc: loc }
+        Lexer { reader: reader, current: 0xFF, loc: loc, peeked: 0 }
     } else {
-        Lexer { reader: reader, current: buf[0], loc: loc }
+        Lexer { reader: reader, current: buf[0], loc: loc, peeked: 0 }
     }
 }
 
@@ -83,13 +84,12 @@ pub fn next_token(&mut self) -> LexerResult {
 
             // num or hexnum (uN)
             b'0' ... b'9' => {
-                self.loc.add_pos();
 
-                let mut un_c = self.current;
                 if self.current == b'0' {
-                    un_c = self.read()?;
-                    if un_c == b'x' {
-                        self.loc.add_pos();
+                    if self.peek()? == b'x' {
+                        self.read()?;
+                        self.loc.add_pos();  // for 0
+                        self.loc.add_pos();  // for x
                         // hexnum
                         self.current = self.read()?;
                         return Ok(Token::number_u(0, self.loc))
@@ -98,7 +98,7 @@ pub fn next_token(&mut self) -> LexerResult {
 
                 // num
                 let mut num = 0;
-                let mut num_c = un_c;
+                let mut num_c = self.current;
                 loop {
                     match num_c {
                         b'_' => self.loc.add_pos(),
@@ -131,7 +131,7 @@ pub fn next_token(&mut self) -> LexerResult {
                 return self.lex_string();
             },
 
-            // id        
+            // id
             b'$' => {
                 self.loc.add_pos();
 
@@ -150,9 +150,9 @@ pub fn next_token(&mut self) -> LexerResult {
                     id_c = self.read()?;
                 }
 
-                let res = String::from_utf8(id.to_vec())?;                
+                let res = String::from_utf8(id.to_vec())?;
                 return Ok(Token::id(res, new_loc))
-            },  
+            },
 
             // left paren or start of block comment
             b'(' => {
@@ -193,10 +193,27 @@ pub fn next_token(&mut self) -> LexerResult {
 }
 
 fn read(&mut self) -> Result<u8, LexError> {
-    let mut buf: &mut [u8] = &mut [0;1];    
+    if self.peeked == 0 {
+        self.read_inner()
+    } else {
+        let peeked = self.peeked;
+        self.peeked = 0;
+        Ok(peeked)
+    }    
+}
+
+fn peek(&mut self) -> Result<u8, LexError> {
+    if self.peeked == 0 {
+        self.peeked = self.read()?;
+    }
+    Ok(self.peeked)
+}
+
+fn read_inner(&mut self) -> Result<u8, LexError> {
+    let mut buf: &mut [u8] = &mut [0;1];
     let n = self.reader.read(&mut buf)?;
 
-    if n == 0 { return Ok(0xFF) }    
+    if n == 0 { return Ok(0xFF) }
     Ok(buf[0])
 }
 
@@ -221,7 +238,7 @@ fn is_idchar(c: u8) -> bool {
 fn test_lex_token() {
     use std::io::Cursor;
     // let mut reader = Cursor::new("\r  (; comment ;) (   module)");
-    let mut reader = Cursor::new("(m)");    
+    let mut reader = Cursor::new("(m)");
 
     let mut lexer = Lexer::new(reader);
     lexer.next_token();
