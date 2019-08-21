@@ -3,10 +3,10 @@ use super::*;
 
 impl<R> Parser<R> where R: Read + Seek {
 
-    pub(super) fn parse_global(&mut self, module: &mut Module) -> Result<(), ParseError> {
+    pub(super) fn parse_global(&mut self) -> Result<(), ParseError> {
         let global_type = self.parse_global_type()?;
         
-        module.globals.push(Global(global_type, Expr(vec![]) ));
+        self.module.globals.push(Global(global_type, Expr(vec![]) ));
 
         Ok(())
     }

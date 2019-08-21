@@ -2,7 +2,7 @@ use instr::*;
 use super::*;
 
 impl<R> Parser<R> where R: Read + Seek {
-    pub(super) fn parse_type(&mut self, module: &mut Module) -> Result<(), ParseError> {
+    pub(super) fn parse_type(&mut self) -> Result<(), ParseError> {
 
         self.match_keyword(Keyword::Type)?;
 
@@ -13,7 +13,7 @@ impl<R> Parser<R> where R: Read + Seek {
         self.match_lparen()?;
         let functype = self.parse_functype()?;
 
-        module.types.push(functype.clone());
+        self.module.types.push(functype.clone());
         self.contexts[0].typedefs.push(functype);
 
         self.match_rparen()?;

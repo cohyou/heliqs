@@ -3,11 +3,11 @@ use super::*;
 
 impl<R> Parser<R> where R: Read + Seek {
 
-    pub(super) fn parse_table(&mut self, module: &mut Module) -> Result<(), ParseError> {        
+    pub(super) fn parse_table(&mut self) -> Result<(), ParseError> {        
         // tabletype
         let table_type = self.parse_table_type()?;
 
-        module.tables.push(Table(table_type));
+        self.module.tables.push(Table(table_type));
 
         Ok(())
     }

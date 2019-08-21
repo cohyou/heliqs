@@ -2,7 +2,7 @@ use instr::*;
 use super::*;
 
 impl<R> Parser<R> where R: Read + Seek {
-    pub(super) fn parse_func(&mut self, module: &mut Module) -> Result<(), ParseError> {
+    pub(super) fn parse_func(&mut self) -> Result<(), ParseError> {
         let mut func = Func::default();
 
         self.match_keyword(Keyword::Func)?;
@@ -33,7 +33,7 @@ impl<R> Parser<R> where R: Read + Seek {
 
         // Expr
 
-        module.funcs.push(func);
+        self.module.funcs.push(func);
 // llh!(context_bf, self);      
 // p!(self.contexts[1]);
         self.contexts.pop();

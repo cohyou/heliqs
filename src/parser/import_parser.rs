@@ -3,7 +3,7 @@ use super::*;
 
 impl<R> Parser<R> where R: Read + Seek {
 
-    pub(super) fn parse_import(&mut self, module: &mut Module) -> Result<(), ParseError> {
+    pub(super) fn parse_import(&mut self) -> Result<(), ParseError> {
         self.match_keyword(Keyword::Import)?;
 
         // module
@@ -17,7 +17,7 @@ impl<R> Parser<R> where R: Read + Seek {
         // import desc
         let import_desc = self.parse_import_desc()?;
 
-        module.imports.push(Import(import_module, import_name, import_desc));
+        self.module.imports.push(Import(import_module, import_name, import_desc));
 
         self.match_rparen()?;
         

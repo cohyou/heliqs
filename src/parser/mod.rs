@@ -32,20 +32,34 @@ where R: Read + Seek {
     lexer: Lexer<R>,
     lookahead: Token,
     contexts: Vec<Context>,
+    pub module: Module,
 }
 
-macro_rules! parse_fields {
-    ($this:ident, $kw:pat, $parse_func:ident, $module:ident) => {
-        loop {
-            match $this.lookahead {
-                tk!(TokenKind::RightParen) => break,
-                kw!($kw) => {
-                    $this.$parse_func(&mut $module)?;
-                    if $this.is_lparen()? {
-                        $this.consume()?;
+macro_rules! parse_field {
+    ($this:ident, $field_type:ident, $f:expr) => {
+        if !$this.is_rparen()? {
+            lla!($field_type, $this);
+            if let tk!(TokenKind::LeftParen) = $this.lookahead {
+                $this.consume()?;
+            }
+            loop {
+                if let kw!(Keyword::$field_type) = &$this.lookahead {
+                    { $f }
+                    if let tk!(TokenKind::LeftParen) = $this.lookahead {
+                        let peeked = $this.peek()?;
+                        if let kw!(Keyword::$field_type) = peeked {
+                            $this.consume()?;
+
+                            continue;
+                        } else {
+                            break;
+                        }
+                    } else {
+                        break;
                     }
-                },
-                _ => break,
+                } else {
+                    break;
+                }
             }
         }
     };
@@ -57,10 +71,11 @@ impl<R> Parser<R> where R: Read + Seek {
             lexer: Lexer::new(reader),
             lookahead: Token::empty(Loc::default()),
             contexts: vec![Context::default()],
+            module: Module::default(),
         }
     }
 
-    pub fn parse(&mut self) -> Result<Module, ParseError> {
+    pub fn parse(&mut self) -> Result<(), ParseError> {
         self.lookahead = self.lexer.next_token()?;
         self.match_lparen()?;
         self.parse_module()
@@ -74,53 +89,47 @@ impl<R> Parser<R> where R: Read + Seek {
         ParseError::InvalidMessage(self.lookahead.clone(), mes.to_string())
     }
 
-    fn parse_module(&mut self) -> Result<Module, ParseError> {
-        let mut module = Module::default();
-        
+    fn parse_module(&mut self) -> Result<(), ParseError> {
+
         self.match_keyword(Keyword::Module)?;
 
         if let tk!(TokenKind::Id(s)) = &self.lookahead {
-            module.id = Some(s.clone());        
-            self.consume()?;            
+            self.module.id = Some(s.clone());
+            self.consume()?;
         }
-        
-        loop {
-            if !self.is_lparen()? { break; }
-
-            self.match_lparen()?;    
-            if let kw!(Keyword::Type) = self.lookahead {            
-                self.parse_type(&mut module)?;
-    
-            } else {
-                break;
+lla!(0, self);
+        parse_field!(self, Type, self.parse_type()?);
+        parse_field!(self, Import, self.parse_import()?);
+        parse_field!(self, Table, self.parse_table()?);
+        parse_field!(self, Memory, self.parse_memory()?);
+        parse_field!(self, Global, self.parse_global()?);
+        parse_field!(self, Func, self.parse_func()?);
+        parse_field!(self, Export, self.parse_export()?);
+lla!(Start, self);
+        if !self.is_rparen()? {
+            if let tk!(TokenKind::LeftParen) = self.lookahead {
+                self.consume()?;
+            }
+            if let kw!(Keyword::Start) = self.lookahead {
+                self.parse_start()?;
             }
         }
-
-        parse_fields!(self, Keyword::Import, parse_import, module);
-        parse_fields!(self, Keyword::Table, parse_table, module);
-        parse_fields!(self, Keyword::Memory, parse_memory, module);
-        parse_fields!(self, Keyword::Global, parse_global, module);
-        parse_fields!(self, Keyword::Func, parse_func, module);                
-        parse_fields!(self, Keyword::Export, parse_export, module);  
-
-        if let kw!(Keyword::Start) = self.lookahead {
-            self.parse_start(&mut module)?;
-        }
-        self.match_lparen()?;
-        parse_fields!(self, Keyword::Elem, parse_elem, module);
-        parse_fields!(self, Keyword::Data, parse_data, module);
+        parse_field!(self, Elem, self.parse_elem()?);
+        parse_field!(self, Data, self.parse_data()?);        
 
         self.match_rparen()?;
-p!(self.contexts[0]);
-        Ok(module)
+
+        p!(self.contexts[0]);
+
+        Ok(())
     }
 
-    fn parse_start(&mut self, module: &mut Module) -> Result<(), ParseError> {        
+    fn parse_start(&mut self) -> Result<(), ParseError> {
         self.match_keyword(Keyword::Start)?;
 
         // func id
         let funcidx = self.resolve_id(&self.contexts[0].funcs.clone())?;
-        module.start = Some(Start(funcidx));
+        self.module.start = Some(Start(funcidx));
 
         self.match_rparen()?;
 
@@ -174,7 +183,7 @@ p!(self.contexts[0]);
     }
 
     fn parse_string(&mut self) -> Result<String, ParseError> {
-        if let tk!(TokenKind::String(s)) = &self.lookahead {            
+        if let tk!(TokenKind::String(s)) = &self.lookahead {
             let res = Ok(s.clone());
             self.consume()?;
             res
@@ -192,9 +201,9 @@ p!(self.contexts[0]);
             Err(self.err())
         }
     }
-    
+
     fn parse_num<T: TryFrom<usize>>(&mut self) -> Result<T, ParseError> {
-        if let nm!(Number::Unsigned(n)) = &self.lookahead {            
+        if let nm!(Number::Unsigned(n)) = &self.lookahead {
             if let Ok(num) = T::try_from(n.clone()) {
                 self.consume()?;
                 Ok(num)
@@ -213,14 +222,14 @@ p!(self.contexts[0]);
         limits.min = self.parse_num::<u32>()?;
 
         // max(optional)
-        if let nm!(Number::Unsigned(_)) = &self.lookahead {            
+        if let nm!(Number::Unsigned(_)) = &self.lookahead {
             limits.max = Some(self.parse_num::<u32>()?);
-        }        
+        }
 
         Ok(limits)
     }
 
-    fn parse_offset(&mut self) -> Result<Expr, ParseError> {        
+    fn parse_offset(&mut self) -> Result<Expr, ParseError> {
         self.match_keyword(Keyword::Offset)?;
 
         // expr
@@ -238,7 +247,7 @@ p!(self.contexts[0]);
                 Ok(res)
             },
             tk!(TokenKind::Id(id)) => {
-                
+
                 if let Some(idx) = from.iter()
                 // .inspect(|c| println!("before: {:?}", c))
                 .position(|t|
@@ -256,6 +265,11 @@ p!(self.contexts[0]);
             }
             _ => Err(self.err()),
         }
+    }
+
+    fn peek(&mut self) -> Result<Token, ParseError> {
+        let peeked = self.lexer.peek_token()?;
+        Ok(peeked)
     }
 
     fn consume(&mut self) -> Result<(), ParseError> {

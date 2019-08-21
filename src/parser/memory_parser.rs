@@ -3,11 +3,11 @@ use super::*;
 
 impl<R> Parser<R> where R: Read + Seek {
 
-    pub(super) fn parse_memory(&mut self, module: &mut Module) -> Result<(), ParseError> {
+    pub(super) fn parse_memory(&mut self) -> Result<(), ParseError> {
         // memtype
         let mem_type = self.parse_memory_type()?;
 
-        module.mems.push(Memory(mem_type));        
+        self.module.mems.push(Memory(mem_type));        
 
         Ok(())
     }

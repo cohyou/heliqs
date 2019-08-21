@@ -2,7 +2,7 @@ use instr::*;
 use super::*;
 
 impl<R> Parser<R> where R: Read + Seek {
-    pub(super) fn parse_elem(&mut self, module: &mut Module) -> Result<(), ParseError> {        
+    pub(super) fn parse_elem(&mut self) -> Result<(), ParseError> {        
         self.match_keyword(Keyword::Elem)?;
 
         // table id
@@ -31,7 +31,7 @@ impl<R> Parser<R> where R: Read + Seek {
             init: func_indices
         };
 
-        module.elems.push(elem);
+        self.module.elems.push(elem);
 
         Ok(())
     }

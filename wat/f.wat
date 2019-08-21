@@ -1,12 +1,12 @@
 (module $moddd
-  ;; types
+  ;; ;; types
   ;; (type $tp1 (func))
   ;; (type $tp2 (func (param i32) (param i64)))
   ;; (type $tp3 (func (param f32) (param f64) (result i32)))
   ;; (type (func (result i64)))
   ;; (type $uniop (func (param i64)))
 
-  ;; ;; imports
+  ;; ;; ;; imports
   ;; (import "imp_func" "1" (func $f1 (type 0)))
   ;; (import "imp_func" "2" (func (type $tp2)))
   ;; (import "imp_func" "3" (func (type 1) (param i32) (param i64)))
@@ -20,18 +20,18 @@
   ;; (import "imp_global" "1" (global $ggg f64))
   ;; (import "imp_global" "2" (global (mut i32)))
 
-  ;; tables
+  ;; ;; tables
   ;; (table $second 43 funcref)
 
-  ;; mems
+  ;; ;; mems
   ;; (memory $aaaaaa 98)
 
-  ;; globals
-  ;; (global $wowowwow i32)
+  ;; ;; globals
+  (global $wowowwow i32)
 
-  ;; funcs
-  (func $fjao (type 0))
-  (func $fjao (type 1))
+  ;; ;; funcs
+  ;; (func $fjao (type 0))
+  ;; (func $fjao (type 1))
   ;; (func $11 (type $tp2))
   ;; (func $fa (type 1) (param $p2 i32) (param i64))
   ;; (func $afm (type $tp3) (param f32) (param f64) (result i32))
@@ -44,17 +44,17 @@
   ;; (func (type 3) (result i64) (local f64) (local i32))
 
 
-  ;; exports
+  ;; ;; exports
   ;; (export "t" (table $second))
   ;; (export "m" (memory $aaaaaa))
   ;; (export "g" (global $wowowwow))
 
   ;; start
-  ;; (start 52)
+  (start 52)
 
-  ;; elem
+  ;; ;; elem
   ;; (elem 0 (offset) 1 2 3 $afm 5)
 
-  ;; data
+  ;; ;; data
   ;; (data 4 (offset) "jlac84myrtqp9")
 )

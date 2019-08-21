@@ -33,10 +33,13 @@ fn lex<R: Read + Seek>(mut reader: R) {
 fn parse<R: Read + Seek>(reader: R) {
     use heliqs::Parser;
     let mut parser = Parser::new(reader);
+    
     match parser.parse() {
-        Ok(module) => println!("MODULE: {:?}", module),
         Err(err) => println!("PARSE ERROR: {:?}", err),
-    }
+        _ => {},
+    };
+    
+    println!("MODULE: {:?}", parser.module);
 }
 
 // fn ast_parse<R: Read + Seek>(mut reader: R) {
