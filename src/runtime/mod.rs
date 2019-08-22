@@ -1,23 +1,23 @@
+mod structure;
+
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::convert::TryInto;
-use core::*;
 
-mod structure;
+use instr::*;
+use parser::*;
 
 pub use self::structure::*;
 
 #[derive(Default)]
 pub struct Runtime {
     store: Store,
-    value_stack: Vec<Val>,
-    label_stack: Vec<Label>,
-    frame_stack: Vec<Activation>,
+    stack: Vec<StackEntry>,
 }
 
 impl Runtime {
     pub fn init_store() -> Store {
-        Store { insts: vec![] }
+        Store::default()
     }
 
     pub fn new(store: Option<Store>) -> Runtime {
@@ -41,17 +41,17 @@ impl Runtime {
         let frame = Frame { module: module_inst.clone(), locals: vec![] };
 
         // 8. Push the frame F to the stack.
-        self.frame_stack.push(Activation(0, frame));
+        self.stack.push(StackEntry::Activation(0, frame));
 
         // 12. Pop the frame from the stack.
-        self.frame_stack.pop();
+        self.stack.pop();
 
         // 15. If the <start function> "module".'start' is not empty, then:
         if module.start.is_some() {
             // (a) Assert: due to <validation>, "moduleinst".'funcaddrs'["module".'start'.'func'] exists.
             
             // (b) Let "funcaddr" be the <function address> "moduleinst".'funcaddrs'["module".'start'.'func'].
-            let func_addr = module_inst.borrow().func_addrs[module.start.clone().unwrap().func as usize];
+            let func_addr = module_inst.borrow().func_addrs[module.start.clone().unwrap().0 as usize];
 
             // (c) <Invoke> the function instance at "funcaddr".
             self.invoke_function(func_addr);
@@ -90,17 +90,17 @@ impl Runtime {
         // 1. Let "func" be the <function> to allocate "moduleinst" its <module instance>.
 
         // 2. Let "a" be the first free <function address> in S.
-        let address = self.store.insts.len() as FuncAddr;
+        let address = self.store.funcs.len() as FuncAddr;
 
         // 3. Let "functype" be the <function type> "moduleinst".'types'["func".'type'].
         // let modinst = module_inst.upgrade().expect("molude instのupgradeに失敗");
-        let func_type = module_inst.borrow_mut().types[func.func_type as usize].clone();
+        let func_type = module_inst.borrow_mut().types[func.0 as usize].clone();
 
         // 4. Let "funcinst" be the <function instance> {'type' "functype", 'module' "moduleinst" 'code' "func"}.
         let func_inst = FuncInst::Normal { func_type: func_type.clone(), module: module_inst.clone(), code: func.clone() };
 
         // 5. Append "funcinst" to the 'funcs' of S.
-        self.store.insts.push(StoreInst::Func(func_inst));
+        self.store.funcs.push(func_inst);
 
         // 取得したアドレスを返す
         address
@@ -113,7 +113,7 @@ impl Runtime {
         //     println!("    {:?}", func);
         // }
         
-        let f = self.store.funcs()[func_addr];
+        let f = &self.store.funcs[func_addr];
 
         // 3. Let [t_1^n] -> [t_2^m] be the <function type> f.'type'.
         // println!("invoke_function f: {:?}", f);
@@ -121,15 +121,15 @@ impl Runtime {
             FuncInst::Normal { func_type: ft, module: module_inst, code} => {
 
                 // 5. Let "t^*" be the list of <value types> f.'code'.'locals'.
-                let local_types = &code.locals;
+                let local_types = &code.1;
 
                 // 6. Let "instr^*" be the expression f.'code'.'body'.
-                let instrs = &code.body;
+                let instrs = &code.2;
 
                 // 8. Pop the values "val^n" from the stack.            
                 let mut stack_values = vec![];
                 for _ in local_types.iter() {
-                    if let Some(v) = self.value_stack.pop() {
+                    if let Some(StackEntry::Val(v)) = self.stack.pop() {
                         stack_values.push(v);
                     }                
                 }
@@ -153,8 +153,8 @@ impl Runtime {
                 };
 
                 // 11. Push the activation of F with arity "m" to the stack.
-                let activation = Activation(ft.1.len().try_into().unwrap(), frame);
-                self.frame_stack.push(activation);
+                let activation = StackEntry::Activation(ft.1.len().try_into().unwrap(), frame);
+                self.stack.push(activation);
 
                 // 12. <Execute> the instruction 'block'[t_2^m] "instr^*" 'end'.
                 let block_instr = Instr::Block(ft.1.clone(), instrs.clone());            
@@ -164,7 +164,7 @@ impl Runtime {
                 match host_code.as_ref() {
                     "log" => {
                         // println!("host function func_type: {:?}", ft);
-                        println!("host function invoked! {:?}", self.value_stack);
+                        println!("host function invoked! {:?}", self.stack);
                     },
                     _ => {},
                 }
@@ -174,7 +174,7 @@ impl Runtime {
 
     fn execute_instr(&mut self, instr: Instr) {
         match instr {
-            Instr::I32Const(val) => { self.value_stack.push(Val::I32Const(val)); }
+            Instr::I32Const(val) => { self.stack.push(StackEntry::Val(Val::I32Const(val))); }
             Instr::Call(x) => { self.execute_call(x.try_into().unwrap()); },
             Instr::Block(result_type, instrs) => { self.execute_block(result_type, &instrs); },
             _ => {},
@@ -185,13 +185,14 @@ impl Runtime {
         // println!("Instr::Call {:?}", x);
 
         // 1. Let F be the current frame.
-        let current_frame = self.frame_stack.pop().unwrap();
+        if let Some(StackEntry::Activation(_, current_frame)) = self.stack.pop() {
 
-        // 3. Let "a" be the <function address> F.'module'.'funcaddrs'[x]
-        let func_addr = current_frame.1.module.borrow_mut().func_addrs[x];
+            // 3. Let "a" be the <function address> F.'module'.'funcaddrs'[x]
+            let func_addr = current_frame.module.borrow_mut().func_addrs[x];
 
-        // 4. <Invoke> the function instance at address a.
-        self.invoke_function(func_addr);
+            // 4. <Invoke> the function instance at address a.
+            self.invoke_function(func_addr);
+        }
     }
 
     fn execute_block(&mut self, result_type: ResultType, expr: &Expr) {
@@ -199,18 +200,19 @@ impl Runtime {
         let n = result_type.len();
 
         // 2. Let L be the label whose arity is "n" and whose continuation is the end of the block.
-        let label = Label(n.try_into().unwrap(), vec![]);
+        let label = StackEntry::Label(n.try_into().unwrap(), vec![]);
 
         // 3. <Enter> the block "instr^*" with label L.
         self.enter_exprs(expr, label);
     }
 
-    fn enter_exprs(&mut self, expr: &Expr, label: Label) {
+    fn enter_exprs(&mut self, expr: &Expr, label: StackEntry) {        
+
         // 1. Push L to the stack.
-        self.label_stack.push(label);
+        self.stack.push(label);
 
         // 2. Jump to the start of the instruction sequence <instr^*>.
-        for instr in expr.instrs.iter() {
+        for instr in expr.0.iter() {
             // println!("enter_exprs: {:?}", instr);
             self.execute_instr(instr.clone());
         }
@@ -221,21 +223,21 @@ impl Runtime {
     /// 実際にはvalueとlabelで別のstackを使っているので、1,2,5の手順は不要。一応やってる
     fn exit_exprs(&mut self) {
         // 1. Let m be the number of values on the top of the stack.
-        let m = self.value_stack.len();
+        let m = self.stack.len();
 
         // 2. Pop the values <val^m> from the stack.
         let mut values = vec![];
         for _ in 0..m {
-            values.push(self.value_stack.pop().unwrap());
+            values.push(self.stack.pop().unwrap());
         }        
 
         // 3. Assert: due to <validation>, the label L is now on the top of the stack.
         // 4. Pop the label from the stack.
-        self.label_stack.pop().expect("3. Assert: due to <validation>, the label L is now on the top of the stack.");
+        self.stack.pop().expect("3. Assert: due to <validation>, the label L is now on the top of the stack.");
 
         // 5. Push <val^m> back to the stack.
         for v in values {
-            self.value_stack.push(v);
+            self.stack.push(v);
         }
 
         // 6. Jump to the position after the 'end' of the <structured control instruction> associated with the label L.

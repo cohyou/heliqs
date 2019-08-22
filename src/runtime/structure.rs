@@ -1,51 +1,56 @@
 use std::rc::Rc;
 use std::cell::RefCell;
-use core::*;
+
+use instr::*;
+use parser::*;
+
+#[derive(Debug)]
+pub enum Val {
+    I32Const(u32),
+    I64Const(u64),
+    F32Const(f32),
+    F64Const(f64),
+}
 
 enum Result {
     Vals(Vec<Val>),
     Trap,
 }
 
-#[derive(Debug)]
-pub enum StoreInst {
-    Func(FuncInst),
-    // Table(TableInst),
-    // Mem(MemInst),
-    // Global(GlobalInst),
-}
-
-#[derive(Default, Debug)]
+#[derive(Debug, Default)]
 pub struct Store {
-    pub insts: Vec<StoreInst>,
+    pub funcs: Vec<FuncInst>,
+    pub tables: Vec<TableInst>,
+    pub mems: Vec<MemInst>,
+    pub globals: Vec<GlobalInst>,
 }
 
-impl Store {
-    pub fn funcs(&self) -> Vec<&FuncInst> {
-        let mut res = vec![];
-        for inst in self.insts.iter() {
-            if let StoreInst::Func(func_inst) = inst {
-                res.push(func_inst);
-            }
-        }
-        res
-    }
-}
+// impl Store {
+//     pub fn funcs(&self) -> Vec<&FuncInst> {
+//         let mut res = vec![];
+//         for inst in self.insts.iter() {
+//             if let StoreInst::Func(func_inst) = inst {
+//                 res.push(func_inst);
+//             }
+//         }
+//         res
+//     }
+// }
 
-type Addr = usize; // 仕様は自由なのでひとまずusize
+type Addr = usize;  // 仕様は自由なのでひとまずusize
 pub type FuncAddr = Addr;
-// type TableAddr = Addr;
+type TableAddr = Addr;
 type MemAddr = Addr;
-// type GlobalAddr = Addr;
+type GlobalAddr = Addr;
 
 #[derive(Debug, Default)]
 pub struct ModuleInst {
     pub types: Vec<FuncType>,
     pub func_addrs: Vec<FuncAddr>,
-    // table_addrs: Vec<TableAddr>,
-    // mem_addrs: Vec<MemAddr>,
-    // global_addrs: Vec<GlobalAddr>,
-    // exports: Vec<ExportInst>,
+    table_addrs: Vec<TableAddr>,
+    mem_addrs: Vec<MemAddr>,
+    global_addrs: Vec<GlobalAddr>,
+    exports: Vec<ExportInst>,
 }
 
 type HostFunc = String; // primitiveは関数名をStringで持つことにします
@@ -62,27 +67,37 @@ pub enum FuncInst {
 //     }
 // }
 
-// type FuncElem = Option<FuncAddr>;
-// struct TableInst { elem: Vec<FuncElem>, max: Option<u32> }
+type FuncElem = Option<FuncAddr>;
 
-// struct MemInst { data: Vec<u8>, max: Option<u32> }
+#[derive(Debug)]
+pub struct TableInst { elem: Vec<FuncElem>, max: Option<u32> }
 
-// struct GlobalInst { value: Val, mutablity: Mutablity }
+#[derive(Debug)]
+pub struct MemInst { data: Vec<u8>, max: Option<u32> }
 
-// struct ExportInst { name: String, value: ExternVal }
+#[derive(Debug)]
+pub struct GlobalInst { value: Val, mutablity: Mutablity }
 
+#[derive(Debug)]
+struct ExportInst { name: String, value: ExternVal }
+
+#[derive(Debug)]
 pub enum ExternVal {
     Func(FuncAddr),
-    // Table(TableAddr),
+    Table(TableAddr),
     Mem(MemAddr),
-    // Global(GlobalAddr),
+    Global(GlobalAddr),
 }
 
-pub struct Label(pub u32, pub Vec<Instr>);
+#[derive(Debug)]
+pub enum StackEntry {
+    Val(Val),
+    Label(u32, Vec<Instr>),
+    Activation(u32, Frame),
+}
 
+#[derive(Debug)]
 pub struct Frame {
     pub locals: Vec<Val>,
     pub module: Rc<RefCell<ModuleInst>>,
 }
-
-pub struct Activation(pub u32, pub Frame);

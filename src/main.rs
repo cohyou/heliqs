@@ -6,22 +6,33 @@ use std::fs::File;
 fn main() {
     let args = env::args().collect::<Vec<String>>();
     let file_name = &args[1];
-    let reader = File::open(file_name).unwrap();
+    let mut reader = File::open(file_name).unwrap();
 
     args.get(2).map(|s|
         match s.as_ref() {
-            "-l" => lex(reader),
-            "-p" => parse(reader),
+            "-l" => lex(&mut reader),
+            "-p" => {
+                match parse(&mut reader) {
+                    Err(err) => {
+                        println!("PARSE ERROR: {:?}", err);
+                        return;
+                    },
+                    _ => {},
+                }
+                return;
+            },
             _ => panic!("invalid option"),
         }
     );
+
+    run(&mut reader);
 }
 
 use std::io::{Read, Seek};
-fn lex<R: Read + Seek>(mut reader: R) {
+fn lex<R: Read + Seek>(reader: &mut R) {
     use heliqs::Lexer;
     use heliqs::TokenKind;
-    let mut lexer = Lexer::new(&mut reader);
+    let mut lexer = Lexer::new(reader);
     while let Ok(t) = lexer.next_token() {
         if t.value == TokenKind::Empty {
             break;
@@ -30,19 +41,34 @@ fn lex<R: Read + Seek>(mut reader: R) {
     }
 }
 
-fn parse<R: Read + Seek>(reader: R) {
+use heliqs::ParseError;
+fn parse<R: Read + Seek>(reader: &mut R) -> Result<(), ParseError> {
     use heliqs::Parser;
     let mut parser = Parser::new(reader);
-    
+    parser.parse()
+}
+
+fn run<R: Read + Seek>(reader: &mut R) {
+    use heliqs::Parser;
+    let mut parser = Parser::new(reader);
+
     match parser.parse() {
         Err(err) => {
             println!("PARSE ERROR: {:?}", err);
             return;
         },
         _ => {},
-    };
-    println!("CONTEXT: {:?}", parser.contexts[0]);
-    println!("MODULE: {:?}", parser.module);
+    }
+
+    use heliqs::ValType;
+    use heliqs::{Runtime, FuncInst, ExternVal};
+    let mut store = Runtime::init_store();
+    let func_inst = FuncInst::Host { func_type: (vec![ValType::I32], vec![]), host_code: "log".to_string() };
+    store.funcs.push(func_inst);
+
+    let mut rt = Runtime::new(Some(store));
+    let extern_vals = vec![ExternVal::Func(0)];
+    println!("module instance: {:?}", rt.instantiate(&parser.module, extern_vals));
 }
 
 // fn ast_parse<R: Read + Seek>(mut reader: R) {
@@ -66,14 +92,4 @@ fn parse<R: Read + Seek>(reader: R) {
     //         }
     //     },
     // }
-// }
-
-// fn run<R: Read + Seek>(mut reader: R) {
-    // let mut store = Runtime::init_store();
-    // let func_inst = FuncInst::Host { func_type: (vec![ValType::I32], vec![]), host_code: "log".to_string() };
-    // store.insts.push(StoreInst::Func(func_inst));
-
-    // let mut rt = Runtime::new(Some(store));
-    // let extern_vals = vec![ExternVal::Func(0)];
-    // println!("module instance: {:?}", rt.instantiate(&module, extern_vals));
 // }
