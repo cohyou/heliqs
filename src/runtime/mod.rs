@@ -58,7 +58,7 @@ impl Runtime {
         }
     }
 
-    fn allocate_module(&mut self, module: &Module, extern_vals: Vec<ExternVal>, vals: Vec<Val>) -> Rc<RefCell<ModuleInst>> {
+    fn allocate_module(&mut self, module: &Module, extern_vals: Vec<ExternVal>, _vals: Vec<Val>) -> Rc<RefCell<ModuleInst>> {
         // 1. Let "module" be the <module> to allocate and "externval_im^*" the vector of <external values> providing the module's
         // imports, and "val^*" the initialization <values> of the module's <globals>.
         let module_inst = Rc::new(RefCell::new(ModuleInst::default()));

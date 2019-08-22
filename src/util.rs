@@ -14,6 +14,7 @@ macro_rules! la {
     };
 }
 
+#[allow(unused_macros)]
 macro_rules! lla {    
     ($i:expr, $this:ident) => {
         pp!($i, $this.lookahead);

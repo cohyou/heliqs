@@ -12,6 +12,7 @@ pub enum Val {
     F64Const(f64),
 }
 
+#[allow(dead_code)]
 enum Result {
     Vals(Vec<Val>),
     Trap,
