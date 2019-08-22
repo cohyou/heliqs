@@ -1,6 +1,7 @@
 mod impls;
 
 use context::*;
+use runtime::*;
 
 pub use self::impls::*;
 
@@ -224,4 +225,12 @@ pub enum Instr {
     I64ReinterpretToF64,
     F32ReinterpretToI32,
     F64ReinterpretToI64,   
+
+    // Administrative Instructions
+    Trap,
+    Invoke(FuncAddr),
+    InitElem(TableAddr, u32, Vec<FuncIndex>),
+    InitData(MemAddr, u32, Vec<u8>),
+    Label(usize, Vec<Instr>, Vec<Instr>),
+    Frame(usize, Frame, Vec<Instr>),
 }

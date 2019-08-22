@@ -4,7 +4,7 @@ use std::cell::RefCell;
 use instr::*;
 use parser::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Val {
     I32Const(u32),
     I64Const(u64),
@@ -39,11 +39,11 @@ pub struct Store {
 
 type Addr = usize;  // 仕様は自由なのでひとまずusize
 pub type FuncAddr = Addr;
-type TableAddr = Addr;
-type MemAddr = Addr;
+pub type TableAddr = Addr;
+pub type MemAddr = Addr;
 type GlobalAddr = Addr;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq)]
 pub struct ModuleInst {
     pub types: Vec<FuncType>,
     pub func_addrs: Vec<FuncAddr>,
@@ -78,10 +78,10 @@ pub struct MemInst { data: Vec<u8>, max: Option<u32> }
 #[derive(Debug)]
 pub struct GlobalInst { value: Val, mutablity: Mutablity }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 struct ExportInst { name: String, value: ExternVal }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ExternVal {
     Func(FuncAddr),
     Table(TableAddr),
@@ -92,11 +92,11 @@ pub enum ExternVal {
 #[derive(Debug)]
 pub enum StackEntry {
     Val(Val),
-    Label(u32, Vec<Instr>),
-    Activation(u32, Frame),
+    Label(usize, Vec<Instr>),
+    Activation(usize, Frame),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Frame {
     pub locals: Vec<Val>,
     pub module: Rc<RefCell<ModuleInst>>,
