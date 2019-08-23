@@ -62,28 +62,13 @@ pub enum Instr {
     GlobalSet(GlobalIndex),
 
     // Memory Instructions
-    I32Load(MemArg),
-    I64Load(MemArg),
-    F32Load(MemArg),
-    F64Load(MemArg),
-    I32Load8S(MemArg),
-    I32Load8U(MemArg),
-    I32Load16S(MemArg),
-    I32Load16U(MemArg),
-    I64Load8S(MemArg),
-    I64Load8U(MemArg),
-    I64Load16S(MemArg),
-    I64Load16U(MemArg),
-    I64Load32S(MemArg),
-    I64Load32U(MemArg),
-    I32Store(MemArg),
-    I64Store(MemArg),
-    F32Store(MemArg),
-    F64Store(MemArg),
-    I32Store8(MemArg),
-    I32Store16(MemArg),
-    I64Store8(MemArg),
-    I64Store16(MemArg),
+    Load(ValType, MemArg),
+    Store(ValType, MemArg),
+    ILoad8(ValSize, ValSign, MemArg),
+    ILoad16(ValSize, ValSign, MemArg),
+    I64Load32(ValSign, MemArg),
+    IStore8(ValSize, MemArg),
+    IStore16(ValSize, MemArg),
     I64Store32(MemArg),
     MemorySize,
     MemoryGrow,
@@ -94,137 +79,18 @@ pub enum Instr {
     F32Const(f32),
     F64Const(f64),
 
-    I32Clz,
-    I32Ctz,
-    I32Popcnt,
-    I32Add,
-    I32Sub,
-    I32Mul,
-    I32DivS,
-    I32DivU,
-    I32RemS,
-    I32RemU,
-    I32And,
-    I32Or,
-    I32Xor,
-    I32Shl,
-    I32ShrS,
-    I32ShrU,
-    I32Rotl,
-    I32Rotr,
+    IUnOp(ValSize, IUnOp),
+    FUnOp(ValSize, FUnOp),
 
-    I64Clz,
-    I64Ctz,
-    I64Popcnt,
-    I64Add,
-    I64Sub,
-    I64Mul,
-    I64DivS,
-    I64DivU,
-    I64RemS,
-    I64RemU,
-    I64And,
-    I64Or,
-    I64Xor,
-    I64Shl,
-    I64ShrS,
-    I64ShrU,
-    I64Rotl,
-    I64Rotr,
+    IBinOp(ValSize, IBinOp),
+    FBinOp(ValSize, FBinOp),
 
-    F32Abs,
-    F32Neg,
-    F32Ceil,
-    F32Floor,
-    F32Trunc,
-    F32Nearest,
-    F32Sqrt,
-    F32Add,
-    F32Sub,
-    F32Mul,
-    F32Div,
-    F32Min,
-    F32Max,
-    F32Copysign,
+    ITestOp(ValSize, ITestOp),
 
-    F64Abs,
-    F64Neg,
-    F64Ceil,
-    F64Floor,
-    F64Trunc,
-    F64Nearest,
-    F64Sqrt,
-    F64Add,
-    F64Sub,
-    F64Mul,
-    F64Div,
-    F64Min,
-    F64Max,
-    F64Copysign,
+    IRelOp(ValSize, IRelOp),
+    FRelOp(ValSize, FRelOp),
 
-    I32Eqz,
-    I32Eq,
-    I32Ne,
-    I32LtS,
-    I32LtU,
-    I32GtS,
-    I32GtU,
-    I32LeS,
-    I32LeU,
-    I32GeS,
-    I32GeU,
-
-    I64Eqz,
-    I64Eq,
-    I64Ne,
-    I64LtS,
-    I64LtU,
-    I64GtS,
-    I64GtU,
-    I64LeS,
-    I64LeU,
-    I64GeS,
-    I64GeU,
-
-    F32Eq,
-    F32Ne,
-    F32Lt,
-    F32Gt,
-    F32Le,
-    F32Ge,
-
-    F64Eq,
-    F64Ne,
-    F64Lt,
-    F64Gt,
-    F64Le,
-    F64Ge,
-
-    I32WrapToI64,
-    I32TruncSToF32,
-    I32TruncUToF32,
-    I32TruncSToF64,
-    I32TruncUToF64,
-    I64ExtendSToI32,
-    I64ExtendUToI32,
-    I64TruncSToF32,
-    I64TruncUToF32,
-    I64TruncSToF64,
-    I64TruncUToF64,
-    F32ConvertSToI32,
-    F32ConvertUToI32,
-    F32ConvertSToI64,
-    F32ConvertUToI64,
-    F32DemoteToF64,
-    F64ConvertSToI32,
-    F64ConvertUToI32,
-    F64ConvertSToI64,
-    F64ConvertUToI64,
-    F64PromoteToF32,
-    I32ReinterpretToF32,
-    I64ReinterpretToF64,
-    F32ReinterpretToI32,
-    F64ReinterpretToI64,   
+    CvtOp(CvtOp),
 
     // Administrative Instructions
     Trap,
@@ -233,4 +99,46 @@ pub enum Instr {
     InitData(MemAddr, u32, Vec<u8>),
     Label(usize, Vec<Instr>, Vec<Instr>),
     Frame(usize, Frame, Vec<Instr>),
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum ValSize { V32, V64 }
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum ValSign { U, S }
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum IUnOp { Clz, Ctz, Popcnt, }
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum IBinOp {
+    Add, Sub, Mul, Div(ValSign), Rem(ValSign),
+    And, Or, Xor, Shl, Shr(ValSign), Rotl, Rotr,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum FUnOp { Abs, Neg, Sqrt, Ceil, Floor, Trunc, Nearest, }
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum FBinOp { Add, Sub, Mul, Div, Min, Max, Copysign, }
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ITestOp { Eqz, }
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum IRelOp { Eq, Ne, Lt(ValSign), Gt(ValSign), Le(ValSign), Ge(ValSign), }
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum FRelOp { Eq, Ne, Lt, Gt, Le, Ge, }
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum CvtOp {
+    I32WrapFromI64,
+    I64ExtendFromI32(ValSign),
+    ITruncFromF(ValSize, ValSize, ValSign),
+    F32DemoteFromF64,
+    F64PromoteFromF32,
+    FConvertFromI(ValSize, ValSize, ValSign),
+    IReinterpretFromF(ValSize),
+    FReinterpretFromI(ValSize),
 }

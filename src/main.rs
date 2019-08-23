@@ -61,12 +61,13 @@ fn run<R: Read + Seek>(reader: &mut R) {
     }
     pp!(MODULE, parser.module);
 
-    use heliqs::ValType;
-    use heliqs::{Runtime, FuncInst, ExternVal};
-    let mut store = Runtime::init_store();
-    let func_inst = FuncInst::Host { func_type: (vec![ValType::I32], vec![]), host_code: "log".to_string() };
-    store.funcs.push(func_inst);
+    // use heliqs::ValType;
+    // use heliqs::FuncInst, ExternVal;
+    #[allow(unused_mut)] let mut store = Runtime::init_store();
+    // let func_inst = FuncInst::Host { func_type: (vec![ValType::I32], vec![]), host_code: "log".to_string() };
+    // store.funcs.push(func_inst);
 
+    use heliqs::{Runtime, ExternVal};
     let mut rt = Runtime::new(Some(store));
     let extern_vals = vec![ExternVal::Func(0)];
     println!("module instance: {:?}", rt.instantiate(&parser.module, extern_vals));

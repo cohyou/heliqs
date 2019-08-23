@@ -173,11 +173,29 @@ impl Runtime {
     }
 
     fn execute_instr(&mut self, instr: Instr) {
-        match instr {
-            Instr::I32Const(val) => { self.stack.push(StackEntry::Val(Val::I32Const(val))); }
+        match instr {            
             Instr::Call(x) => { self.execute_call(x.try_into().unwrap()); },
             Instr::Block(result_type, instrs) => { self.execute_block(result_type, &instrs); },
+            Instr::I32Const(val) => { self.stack.push(StackEntry::Val(Val::I32Const(val))); }
+            Instr::IBinOp(ValSize::V32, ibinop) => { self.execute_ibinop(&ibinop); }
             _ => {},
+        }
+    }
+
+    fn execute_ibinop(&mut self, ibinop: &IBinOp) {
+        if let StackEntry::Val(Val::I32Const(c2)) = self.stack.pop().unwrap() {
+            if let StackEntry::Val(Val::I32Const(c1)) = self.stack.pop().unwrap() {
+                let val = 
+                match ibinop {
+                    IBinOp::Add => Val::I32Const(c1 + c2),
+                    IBinOp::Sub => Val::I32Const(c1 - c2),
+                    IBinOp::Mul => Val::I32Const(c1 * c2),
+                    IBinOp::Div(_) => Val::I32Const(c1 / c2),
+                    IBinOp::Rem(_) => Val::I32Const(c1 % c2),
+                    _ => unimplemented!(),
+                };
+                self.stack.push(StackEntry::Val(val))
+            }
         }
     }
 
@@ -221,7 +239,8 @@ impl Runtime {
     fn exit_exprs(&mut self) {
         // 1. Let m be the number of values on the top of the stack.
         let mut stack_iter = self.stack.iter();
-        let m = stack_iter.rposition(|entry| self.is_stack_entry_value(entry) ).unwrap_or(0);
+        let pos = stack_iter.rposition(|entry| self.is_stack_entry_value(entry) ).unwrap_or(0);
+        let m = self.stack.len() - pos;
 
         // 2. Pop the values <val^m> from the stack.
         let mut values = vec![];
@@ -267,6 +286,7 @@ impl Runtime {
     fn get_current_frame(&self) -> (&usize, &Frame) {
         let mut stack_iter = self.stack.iter();
         let activation = stack_iter.rfind(|entry| self.is_stack_entry_activation(entry));
+        p!(self.stack);
         if let Some(StackEntry::Activation(arity, frame)) = activation {
             (arity, frame)
         } else {
@@ -288,12 +308,17 @@ use self::structure::ModuleInst;
 
 impl Debug for Store {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{{")?;
-        if self.funcs.len() > 0 { write!(f, " funcs: {:?}", self.funcs)?; }
-        if self.tables.len() > 0 { write!(f, " tables: {:?}", self.tables)?; }
-        if self.mems.len() > 0 { write!(f, " mems: {:?}", self.mems)?; }
-        if self.globals.len() > 0 { write!(f, " globals: {:?}", self.globals)?; }
-        write!(f, " }}")
+        writeln!(f, "{{")?;
+        if self.funcs.len() > 0 {
+            writeln!(f, " funcs:")?;
+            for func in &self.funcs {
+                writeln!(f, "   {:?}", func)?;
+            }            
+        }
+        if self.tables.len() > 0 { writeln!(f, " tables: {:?}", self.tables)?; }
+        if self.mems.len() > 0 { writeln!(f, " mems: {:?}", self.mems)?; }
+        if self.globals.len() > 0 { writeln!(f, " globals: {:?}", self.globals)?; }
+        writeln!(f, " }}")
     }
 }
 

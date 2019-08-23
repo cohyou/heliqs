@@ -68,194 +68,156 @@ fn vec_to_instr(s: &[u8]) -> Option<Instr> {
     let memarg = MemArg::default();
 
     match s {
-       b"block" => Some(Instr::Block(rt, Expr::default())),
-       b"loop" => Some(Instr::Loop(rt, Expr::default())),
-       b"if" => Some(Instr::If(rt, Expr::default(), Expr::default())),
+        b"block" => Some(Instr::Block(rt, Expr::default())),
+        b"loop" => Some(Instr::Loop(rt, Expr::default())),
+        b"if" => Some(Instr::If(rt, Expr::default(), Expr::default())),
 
-       b"unreachable" => Some(Instr::Unreachable),
-       b"nop" => Some(Instr::Nop),
-       b"br" => Some(Instr::Br(0)),
-       b"br_if" => Some(Instr::BrIf(0)),
-       b"br_table" => Some(Instr::BrTable(bt, 0)),
-       b"return" => Some(Instr::Return),
-       b"call" => Some(Instr::Call(0)),
-       b"call_indirect" => Some(Instr::CallIndirect(0)),
+        b"unreachable" => Some(Instr::Unreachable),
+        b"nop" => Some(Instr::Nop),
+        b"br" => Some(Instr::Br(0)),
+        b"br_if" => Some(Instr::BrIf(0)),
+        b"br_table" => Some(Instr::BrTable(bt, 0)),
+        b"return" => Some(Instr::Return),
+        b"call" => Some(Instr::Call(0)),
+        b"call_indirect" => Some(Instr::CallIndirect(0)),
 
-       b"drop" => Some(Instr::Drop),
-       b"select" => Some(Instr::Select),
+        b"drop" => Some(Instr::Drop),
+        b"select" => Some(Instr::Select),
 
-       b"local.get" => Some(Instr::LocalGet(0)),
-       b"local.set" => Some(Instr::LocalSet(0)),
-       b"local.tee" => Some(Instr::LocalTee(0)),
-       b"global.get" => Some(Instr::GlobalGet(0)),
-       b"global.set" => Some(Instr::GlobalSet(0)),
+        b"local.get" => Some(Instr::LocalGet(0)),
+        b"local.set" => Some(Instr::LocalSet(0)),
+        b"local.tee" => Some(Instr::LocalTee(0)),
+        b"global.get" => Some(Instr::GlobalGet(0)),
+        b"global.set" => Some(Instr::GlobalSet(0)),
 
-       // Memory Instructions
-       b"i32.load" => Some(Instr::I32Load(memarg)),
-       b"i64.load" => Some(Instr::I64Load(memarg)),
-       b"f32.load" => Some(Instr::F32Load(memarg)),
-       b"f64.load" => Some(Instr::F64Load(memarg)),
-       b"i32.load8_s" => Some(Instr::I32Load8S(memarg)),
-       b"i32.load8_u" => Some(Instr::I32Load8U(memarg)),
-       b"i32.load16_s" => Some(Instr::I32Load16S(memarg)),
-       b"i32.load16_u" => Some(Instr::I32Load16U(memarg)),
-       b"i64.load8_s" => Some(Instr::I64Load8S(memarg)),
-       b"i64.load8_u" => Some(Instr::I64Load8U(memarg)),
-       b"i64.load16_s" => Some(Instr::I64Load16S(memarg)),
-       b"i64.load16_u" => Some(Instr::I64Load16U(memarg)),
-       b"i64.load32_s" => Some(Instr::I64Load32S(memarg)),
-       b"i64.load32_u" => Some(Instr::I64Load32U(memarg)),
-       b"i32.store" => Some(Instr::I32Store(memarg)),
-       b"i64.store" => Some(Instr::I64Store(memarg)),
-       b"f32.store" => Some(Instr::F32Store(memarg)),
-       b"f64.store" => Some(Instr::F64Store(memarg)),
-       b"i32.store8" => Some(Instr::I32Store8(memarg)),
-       b"i32.store16" => Some(Instr::I32Store16(memarg)),
-       b"i64.store8" => Some(Instr::I64Store8(memarg)),
-       b"i64.store16" => Some(Instr::I64Store16(memarg)),
-       b"i64.store32" => Some(Instr::I64Store32(memarg)),
-       b"memory.size" => Some(Instr::MemorySize),
-       b"memory.grow" => Some(Instr::MemoryGrow),
+        b"i64.store32" => Some(Instr::I64Store32(memarg)),
+        b"memory.size" => Some(Instr::MemorySize),
+        b"memory.grow" => Some(Instr::MemoryGrow),
 
-        // Numeric Instructions
-       b"i32.const" => Some(Instr::I32Const(0)),
-       b"i64.const" => Some(Instr::I64Const(9)),
-       b"f32.const" => Some(Instr::F32Const(0.0)),
-       b"f64.const" => Some(Instr::F64Const(0.0)),
+        b"i32.wrap/i64" => Some(Instr::CvtOp(CvtOp::I32WrapFromI64)),
+        b"i64.extend_s/i32" => Some(Instr::CvtOp(CvtOp::I64ExtendFromI32(ValSign::S))),
+        b"i64.extend_u/i32" => Some(Instr::CvtOp(CvtOp::I64ExtendFromI32(ValSign::U))),
 
-       b"i32.clz" => Some(Instr::I32Clz),
-       b"i32.ctz" => Some(Instr::I32Ctz),
-       b"i32.popcnt" => Some(Instr::I32Popcnt),
-       b"i32.add" => Some(Instr::I32Add),
-       b"i32.sub" => Some(Instr::I32Sub),
-       b"i32.mul" => Some(Instr::I32Mul),
-       b"i32.div_s" => Some(Instr::I32DivS),
-       b"i32.div_u" => Some(Instr::I32DivU),
-       b"i32.rem_s" => Some(Instr::I32RemS),
-       b"i32.rem_u" => Some(Instr::I32RemU),
-       b"i32.and" => Some(Instr::I32And),
-       b"i32.or" => Some(Instr::I32Or),
-       b"i32.xor" => Some(Instr::I32Xor),
-       b"i32.shl" => Some(Instr::I32Shl),
-       b"i32.shr_s" => Some(Instr::I32ShrS),
-       b"i32.shr_u" => Some(Instr::I32ShrU),
-       b"i32.rotl" => Some(Instr::I32Rotl),
-       b"i32.rotr" => Some(Instr::I32Rotr),
+        b"i32.trunc_s/f32" => Some(Instr::CvtOp(CvtOp::ITruncFromF(ValSize::V32, ValSize::V32, ValSign::S))),
+        b"i32.trunc_u/f32" => Some(Instr::CvtOp(CvtOp::ITruncFromF(ValSize::V32, ValSize::V32, ValSign::U))),
+        b"i32.trunc_s/f64" => Some(Instr::CvtOp(CvtOp::ITruncFromF(ValSize::V32, ValSize::V64, ValSign::S))),
+        b"i32.trunc_u/f64" => Some(Instr::CvtOp(CvtOp::ITruncFromF(ValSize::V32, ValSize::V64, ValSign::U))),
+        b"i64.trunc_s/f32" => Some(Instr::CvtOp(CvtOp::ITruncFromF(ValSize::V64, ValSize::V32, ValSign::S))),
+        b"i64.trunc_u/f32" => Some(Instr::CvtOp(CvtOp::ITruncFromF(ValSize::V64, ValSize::V32, ValSign::U))),
+        b"i64.trunc_s/f64" => Some(Instr::CvtOp(CvtOp::ITruncFromF(ValSize::V64, ValSize::V64, ValSign::S))),
+        b"i64.trunc_u/f64" => Some(Instr::CvtOp(CvtOp::ITruncFromF(ValSize::V64, ValSize::V64, ValSign::U))),
 
-       b"i64.clz" => Some(Instr::I64Clz),
-       b"i64.ctz" => Some(Instr::I64Ctz),
-       b"i64.popcnt" => Some(Instr::I64Popcnt),
-       b"i64.add" => Some(Instr::I64Add),
-       b"i64.sub" => Some(Instr::I64Sub),
-       b"i64.mul" => Some(Instr::I64Mul),
-       b"i64.div_s" => Some(Instr::I64DivS),
-       b"i64.div_u" => Some(Instr::I64DivU),
-       b"i64.rem_s" => Some(Instr::I64RemS),
-       b"i64.rem_u" => Some(Instr::I64RemU),
-       b"i64.and" => Some(Instr::I64And),
-       b"i64.or" => Some(Instr::I64Or),
-       b"i64.xor" => Some(Instr::I64Xor),
-       b"i64.shl" => Some(Instr::I64Shl),
-       b"i64.shr_s" => Some(Instr::I64ShrS),
-       b"i64.shr_u" => Some(Instr::I64ShrU),
-       b"i64.rotl" => Some(Instr::I64Rotl),
-       b"i64.rotr" => Some(Instr::I64Rotr),
+        b"f32.demote/f64" => Some(Instr::CvtOp(CvtOp::F32DemoteFromF64)),
+        b"f64.promote/f32" => Some(Instr::CvtOp(CvtOp::F64PromoteFromF32)),
 
-       b"f32.abs" => Some(Instr::F32Abs),
-       b"f32.neg" => Some(Instr::F32Neg),
-       b"f32.ceil" => Some(Instr::F32Ceil),
-       b"f32.floor" => Some(Instr::F32Floor),
-       b"f32.trunc" => Some(Instr::F32Trunc),
-       b"f32.nearest" => Some(Instr::F32Nearest),
-       b"f32.sqrt" => Some(Instr::F32Sqrt),
-       b"f32.add" => Some(Instr::F32Add),
-       b"f32.sub" => Some(Instr::F32Sub),
-       b"f32.mul" => Some(Instr::F32Mul),
-       b"f32.div" => Some(Instr::F32Div),
-       b"f32.min" => Some(Instr::F32Min),
-       b"f32.max" => Some(Instr::F32Max),
-       b"f32.copysign" => Some(Instr::F32Copysign),
+        b"f32.convert_s/i32" => Some(Instr::CvtOp(CvtOp::FConvertFromI(ValSize::V32, ValSize::V32, ValSign::S))),
+        b"f32.convert_u/i32" => Some(Instr::CvtOp(CvtOp::FConvertFromI(ValSize::V32, ValSize::V32, ValSign::U))),
+        b"f32.convert_s/i64" => Some(Instr::CvtOp(CvtOp::FConvertFromI(ValSize::V32, ValSize::V64, ValSign::S))),
+        b"f32.convert_u/i64" => Some(Instr::CvtOp(CvtOp::FConvertFromI(ValSize::V32, ValSize::V64, ValSign::U))),
+        b"f64.convert_s/i32" => Some(Instr::CvtOp(CvtOp::FConvertFromI(ValSize::V64, ValSize::V32, ValSign::S))),
+        b"f64.convert_u/i32" => Some(Instr::CvtOp(CvtOp::FConvertFromI(ValSize::V64, ValSize::V32, ValSign::U))),
+        b"f64.convert_s/i64" => Some(Instr::CvtOp(CvtOp::FConvertFromI(ValSize::V64, ValSize::V64, ValSign::S))),
+        b"f64.convert_u/i64" => Some(Instr::CvtOp(CvtOp::FConvertFromI(ValSize::V64, ValSize::V64, ValSign::U))),
 
-       b"f64.abs" => Some(Instr::F64Abs),
-       b"f64.neg" => Some(Instr::F64Neg),
-       b"f64.ceil" => Some(Instr::F64Ceil),
-       b"f64.floor" => Some(Instr::F64Floor),
-       b"f64.trunc" => Some(Instr::F64Trunc),
-       b"f64.nearest" => Some(Instr::F64Nearest),
-       b"f64.sqrt" => Some(Instr::F64Sqrt),
-       b"f64.add" => Some(Instr::F64Add),
-       b"f64.sub" => Some(Instr::F64Sub),
-       b"f64.mul" => Some(Instr::F64Mul),
-       b"f64.div" => Some(Instr::F64Div),
-       b"f64.min" => Some(Instr::F64Min),
-       b"f64.max" => Some(Instr::F64Max),
-       b"f64.copysign" => Some(Instr::F64Copysign),
+        b"i32.reinterpret/f32" => Some(Instr::CvtOp(CvtOp::IReinterpretFromF(ValSize::V32))),
+        b"i64.reinterpret/f64" => Some(Instr::CvtOp(CvtOp::IReinterpretFromF(ValSize::V64))),
+        b"f32.reinterpret/i32" => Some(Instr::CvtOp(CvtOp::FReinterpretFromI(ValSize::V32))),
+        b"f64.reinterpret/i64" => Some(Instr::CvtOp(CvtOp::FReinterpretFromI(ValSize::V64))),
 
-       b"i32.eqz" => Some(Instr::I32Eqz),
-       b"i32.eq" => Some(Instr::I32Eq),
-       b"i32.ne" => Some(Instr::I32Ne),
-       b"i32.lt_s" => Some(Instr::I32LtS),
-       b"i32.lt_u" => Some(Instr::I32LtU),
-       b"i32.gt_s" => Some(Instr::I32GtS),
-       b"i32.gt_u" => Some(Instr::I32GtU),
-       b"i32.le_s" => Some(Instr::I32LeS),
-       b"i32.le_u" => Some(Instr::I32LeU),
-       b"i32.ge_s" => Some(Instr::I32GeS),
-       b"i32.ge_u" => Some(Instr::I32GeU),
+        _ => {
+            let mut s_iter = s.split(|&b| b == b'.');
+            let vt_b = s_iter.next().unwrap();
+            let instr = s_iter.next().unwrap();
 
-       b"i64.eqz" => Some(Instr::I64Eqz),
-       b"i64.eq" => Some(Instr::I64Eq),
-       b"i64.ne" => Some(Instr::I64Ne),
-       b"i64.lt_s" => Some(Instr::I64LtS),
-       b"i64.lt_u" => Some(Instr::I64LtU),
-       b"i64.gt_s" => Some(Instr::I64GtS),
-       b"i64.gt_u" => Some(Instr::I64GtU),
-       b"i64.le_s" => Some(Instr::I64LeS),
-       b"i64.le_u" => Some(Instr::I64LeU),
-       b"i64.ge_s" => Some(Instr::I64GeS),
-       b"i64.ge_u" => Some(Instr::I64GeU),
+            let vt = vec_to_valtype(vt_b).unwrap();
+            let vs = vec_to_valsize(vt_b).unwrap();
+            match instr {
+                b"load" => Some(Instr::Load(vt, memarg)),
+                b"store" => Some(Instr::Store(vt, memarg)),
+                b"store8" => Some(Instr::IStore8(vs, memarg)),
+                b"store16" => Some(Instr::IStore16(vs, memarg)),
+                b"const" => {
+                    match vt {
+                        ValType::I32 => Some(Instr::I32Const(0)),
+                        ValType::I64 => Some(Instr::I64Const(0)),
+                        ValType::F32 => Some(Instr::F32Const(0.0)),
+                        ValType::F64 => Some(Instr::F64Const(0.0)),
+                    }
+                }
+                b"clz" => Some(Instr::IUnOp(vs, IUnOp::Clz)),
+                b"ctz" => Some(Instr::IUnOp(vs, IUnOp::Ctz)),
+                b"popcnt" => Some(Instr::IUnOp(vs, IUnOp::Popcnt)),
 
-       b"f32.eq" => Some(Instr::F32Eq),
-       b"f32.ne" => Some(Instr::F32Ne),
-       b"f32.lt" => Some(Instr::F32Lt),
-       b"f32.gt" => Some(Instr::F32Gt),
-       b"f32.le" => Some(Instr::F32Le),
-       b"f32.ge" => Some(Instr::F32Ge),
+                b"add" | b"sub" | b"mul" => {
+                    match vt {
+                        ValType::I32 | ValType::I64 => {
+                            Some(Instr::IBinOp(vs, vec_to_ibinop(instr).unwrap()))
+                        },
+                        ValType::F32 | ValType::F64 => {
+                            Some(Instr::FBinOp(vs, vec_to_fbinop(instr).unwrap()))
+                        },                        
+                    }                    
+                }
 
-       b"f64.eq" => Some(Instr::F64Eq),
-       b"f64.ne" => Some(Instr::F64Ne),
-       b"f64.lt" => Some(Instr::F64Lt),
-       b"f64.gt" => Some(Instr::F64Gt),
-       b"f64.le" => Some(Instr::F64Le),
-       b"f64.ge" => Some(Instr::F64Ge),
+                b"mul" => Some(Instr::IBinOp(vs, IBinOp::Mul)),
+                b"and" => Some(Instr::IBinOp(vs, IBinOp::And)),
+                b"or" => Some(Instr::IBinOp(vs, IBinOp::Or)),
+                b"xor" => Some(Instr::IBinOp(vs, IBinOp::Xor)),
+                b"shl" => Some(Instr::IBinOp(vs, IBinOp::Shl)),
+                b"rotl" => Some(Instr::IBinOp(vs, IBinOp::Rotl)),
+                b"rotr" => Some(Instr::IBinOp(vs, IBinOp::Rotr)),
 
-       b"i32.wrap/i64" => Some(Instr::I32WrapToI64),
-       b"i32.trunc_s/f32" => Some(Instr::I32TruncSToF32),
-       b"i32.trunc_u/f32" => Some(Instr::I32TruncUToF32),
-       b"i32.trunc_s/f64" => Some(Instr::I32TruncSToF64),
-       b"i32.trunc_u/f64" => Some(Instr::I32TruncUToF64),
-       b"i64.extend_s/i32" => Some(Instr::I64ExtendSToI32),
-       b"i64.extend_u/i32" => Some(Instr::I64ExtendUToI32),
-       b"i64.trunc_s/f32" => Some(Instr::I64TruncSToF32),
-       b"i64.trunc_u/f32" => Some(Instr::I64TruncUToF32),
-       b"i64.trunc_s/f64" => Some(Instr::I64TruncSToF64),
-       b"i64.trunc_u/f64" => Some(Instr::I64TruncUToF64),
-       b"f32.convert_s/i32" => Some(Instr::F32ConvertSToI32),
-       b"f32.convert_u/i32" => Some(Instr::F32ConvertUToI32),
-       b"f32.convert_s/i64" => Some(Instr::F32ConvertSToI64),
-       b"f32.convert_u/i64" => Some(Instr::F32ConvertUToI64),
-       b"f32.demote/f64" => Some(Instr::F32DemoteToF64),
-       b"f64.convert_s/i32" => Some(Instr::F64ConvertSToI32),
-       b"f64.convert_u/i32" => Some(Instr::F64ConvertUToI32),
-       b"f64.convert_s/i64" => Some(Instr::F64ConvertSToI64),
-       b"f64.convert_u/i64" => Some(Instr::F64ConvertUToI64),
-       b"f64.promote/f32" => Some(Instr::F64PromoteToF32),
-       b"i32.reinterpret/f32" => Some(Instr::I32ReinterpretToF32),
-       b"i64.reinterpret/f64" => Some(Instr::I64ReinterpretToF64),
-       b"f32.reinterpret/i32" => Some(Instr::F32ReinterpretToI32),
-       b"f64.reinterpret/i64" => Some(Instr::F64ReinterpretToI64),
+                b"abs" => Some(Instr::FUnOp(vs, FUnOp::Abs)),
+                b"neg" => Some(Instr::FUnOp(vs, FUnOp::Neg)),
+                b"ceil" => Some(Instr::FUnOp(vs, FUnOp::Ceil)),
+                b"floor" => Some(Instr::FUnOp(vs, FUnOp::Floor)),
+                b"trunc" => Some(Instr::FUnOp(vs, FUnOp::Trunc)),
+                b"nearest" => Some(Instr::FUnOp(vs, FUnOp::Nearest)),
+                b"sqrt" => Some(Instr::FUnOp(vs, FUnOp::Sqrt)),
+                
+                b"div" => Some(Instr::FBinOp(vs, FBinOp::Div)),
+                b"min" => Some(Instr::FBinOp(vs, FBinOp::Min)),
+                b"max" => Some(Instr::FBinOp(vs, FBinOp::Max)),
+                b"copysign" => Some(Instr::FBinOp(vs, FBinOp::Copysign)),
 
-        _ => panic!("vec_to_valtype"),
+                b"eqz" => Some(Instr::ITestOp(vs, ITestOp::Eqz)),
+
+                b"eq" | b"ne" => {
+                    match vt {
+                        ValType::I32 | ValType::I64 => {
+                            Some(Instr::IRelOp(vs, vec_to_irelop(instr).unwrap()))
+                        },
+                        ValType::F32 | ValType::F64 => {
+                            Some(Instr::FRelOp(vs, vec_to_frelop(instr).unwrap()))
+                        },                        
+                    }                    
+                }
+
+                b"lt" | b"gt" | b"le" | b"ge" => Some(Instr::FRelOp(vs, vec_to_frelop(instr).unwrap())),
+
+                _ => {
+                    let instr_tokens: Vec<&[u8]> = instr.split(|&b| b == b'_').collect();
+                    let sign = vec_to_valsign(instr_tokens[1]).unwrap();
+                    match instr_tokens[0] {
+                        b"load8" => Some(Instr::ILoad8(vs, sign, memarg)),
+                        b"load16" => Some(Instr::ILoad16(vs, sign, memarg)),
+                        b"load32" => {
+                            if vs == ValSize::V64 { Some(Instr::I64Load32(sign, memarg)) } else { None }
+                        },
+                        b"div" => Some(Instr::IBinOp(vs, IBinOp::Div(sign))),
+                        b"rem" => Some(Instr::IBinOp(vs, IBinOp::Rem(sign))),
+                        b"shr" => Some(Instr::IBinOp(vs, IBinOp::Shr(sign))),
+
+                        b"lt" => Some(Instr::IRelOp(vs, IRelOp::Lt(sign))),
+                        b"gt" => Some(Instr::IRelOp(vs, IRelOp::Gt(sign))),
+                        b"le" => Some(Instr::IRelOp(vs, IRelOp::Le(sign))),
+                        b"ge" => Some(Instr::IRelOp(vs, IRelOp::Ge(sign))),
+
+                        _ => panic!("invalid instr name: {:?}", String::from_utf8(s.to_vec())),
+                    }
+                }
+            }            
+        },        
     }
 }
 
@@ -265,6 +227,60 @@ fn vec_to_valtype(s: &[u8]) -> Option<ValType> {
         b"i64" => Some(ValType::I64),
         b"f32" => Some(ValType::F32),
         b"f64" => Some(ValType::F64),
+        _ => None,
+    }
+}
+
+fn vec_to_valsize(s: &[u8]) -> Option<ValSize> {
+    match s {
+        b"i32" | b"f32" => Some(ValSize::V32),
+        b"i64" | b"f64" => Some(ValSize::V64),
+        _ => None,
+    }
+}
+
+fn vec_to_valsign(s: &[u8]) -> Option<ValSign> {
+    match s {
+        b"s" => Some(ValSign::S),
+        b"u" => Some(ValSign::U),
+        _ => None,
+    }
+}
+
+fn vec_to_ibinop(s: &[u8]) -> Option<IBinOp> {
+    match s {
+        b"add" => Some(IBinOp::Add),
+        b"sub" => Some(IBinOp::Sub),
+        b"mul" => Some(IBinOp::Mul),
+        _ => None,
+    }
+}
+
+fn vec_to_fbinop(s: &[u8]) -> Option<FBinOp> {
+    match s {
+        b"add" => Some(FBinOp::Add),
+        b"sub" => Some(FBinOp::Sub),
+        b"mul" => Some(FBinOp::Mul),
+        _ => None,
+    }
+}
+
+fn vec_to_irelop(s: &[u8]) -> Option<IRelOp> {
+    match s {
+        b"eq" => Some(IRelOp::Eq),
+        b"ne" => Some(IRelOp::Ne),
+        _ => None,
+    }
+}
+
+fn vec_to_frelop(s: &[u8]) -> Option<FRelOp> {
+    match s {
+        b"eq" => Some(FRelOp::Eq),
+        b"ne" => Some(FRelOp::Ne),
+        b"lt" => Some(FRelOp::Lt),
+        b"gt" => Some(FRelOp::Gt),
+        b"le" => Some(FRelOp::Le),
+        b"ge" => Some(FRelOp::Ge),
         _ => None,
     }
 }

@@ -49,7 +49,7 @@ macro_rules! instr_memarg {
     ($this: ident, $v:ident, $align:expr) => {{
         $this.consume()?;
         let memarg = MemArg { align: $align, offset: 0 };
-        $v.push(Instr::I32Load(memarg));
+        $v.push(Instr::Load(ValType::I32, memarg));
     }};
 }
 
@@ -107,29 +107,23 @@ impl<R> Parser<R> where R: Read + Seek {
                 instr!(Instr::GlobalSet(_)) => instr_global!(self, instrs, GlobalSet),
 
                 // Memory Instructions
-                instr!(Instr::I32Load(_)) => instr_memarg!(self, instrs, 2),
-                instr!(Instr::I64Load(_)) => instr_memarg!(self, instrs, 3),
-                instr!(Instr::F32Load(_)) => instr_memarg!(self, instrs, 2),
-                instr!(Instr::F64Load(_)) => instr_memarg!(self, instrs, 3),
-                instr!(Instr::I32Load8S(_)) => instr_memarg!(self, instrs, 0),
-                instr!(Instr::I32Load8U(_)) => instr_memarg!(self, instrs, 0),
-                instr!(Instr::I32Load16S(_)) => instr_memarg!(self, instrs, 1),
-                instr!(Instr::I32Load16U(_)) => instr_memarg!(self, instrs, 1),
-                instr!(Instr::I64Load8S(_)) => instr_memarg!(self, instrs, 0),
-                instr!(Instr::I64Load8U(_)) => instr_memarg!(self, instrs, 0),
-                instr!(Instr::I64Load16S(_)) => instr_memarg!(self, instrs, 1),
-                instr!(Instr::I64Load16U(_)) => instr_memarg!(self, instrs, 1),
-                instr!(Instr::I64Load32S(_)) => instr_memarg!(self, instrs, 2),
-                instr!(Instr::I64Load32U(_)) => instr_memarg!(self, instrs, 2),
-                instr!(Instr::I32Store(_)) => instr_memarg!(self, instrs, 2),
-                instr!(Instr::I64Store(_)) => instr_memarg!(self, instrs, 3),
-                instr!(Instr::F32Store(_)) => instr_memarg!(self, instrs, 2),
-                instr!(Instr::F64Store(_)) => instr_memarg!(self, instrs, 3),
-                instr!(Instr::I32Store8(_)) => instr_memarg!(self, instrs, 0),
-                instr!(Instr::I32Store16(_)) => instr_memarg!(self, instrs, 1),
-                instr!(Instr::I64Store8(_)) => instr_memarg!(self, instrs, 0),
-                instr!(Instr::I64Store16(_)) => instr_memarg!(self, instrs, 1),
+                instr!(Instr::ILoad8(_, _, _)) => instr_memarg!(self, instrs, 0),
+                instr!(Instr::IStore8(_, _)) => instr_memarg!(self, instrs, 0),
+
+                instr!(Instr::ILoad16(_, _, _)) => instr_memarg!(self, instrs, 1),
+                instr!(Instr::IStore16(_, _)) => instr_memarg!(self, instrs, 1),
+
+                instr!(Instr::Load(ValType::I32, _)) => instr_memarg!(self, instrs, 2),
+                instr!(Instr::Load(ValType::F32, _)) => instr_memarg!(self, instrs, 2),
+                instr!(Instr::I64Load32(_, _)) => instr_memarg!(self, instrs, 2),
+                instr!(Instr::Store(ValType::I32, _)) => instr_memarg!(self, instrs, 2),
+                instr!(Instr::Store(ValType::F32, _)) => instr_memarg!(self, instrs, 2),
                 instr!(Instr::I64Store32(_)) => instr_memarg!(self, instrs, 2),
+
+                instr!(Instr::Load(ValType::I64, _)) => instr_memarg!(self, instrs, 3),
+                instr!(Instr::Load(ValType::F64, _)) => instr_memarg!(self, instrs, 3),
+                instr!(Instr::Store(ValType::I64, _)) => instr_memarg!(self, instrs, 3),
+                instr!(Instr::Store(ValType::F64, _)) => instr_memarg!(self, instrs, 3),
 
                 // Numeric Instructions
                 instr!(Instr::I32Const(_)) => instr_const!(self, instrs, I32Const, u32, "i32.const"),
