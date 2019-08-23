@@ -286,6 +286,17 @@ impl Runtime {
 use std::fmt::Debug;
 use self::structure::ModuleInst;
 
+impl Debug for Store {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{{")?;
+        if self.funcs.len() > 0 { write!(f, " funcs: {:?}", self.funcs)?; }
+        if self.tables.len() > 0 { write!(f, " tables: {:?}", self.tables)?; }
+        if self.mems.len() > 0 { write!(f, " mems: {:?}", self.mems)?; }
+        if self.globals.len() > 0 { write!(f, " globals: {:?}", self.globals)?; }
+        write!(f, " }}")
+    }
+}
+
 impl Debug for ModuleInst {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{{")?;
@@ -295,5 +306,18 @@ impl Debug for ModuleInst {
         if self.mem_addrs.len() > 0 { write!(f, " mem_addrs: {:?}", self.mem_addrs)?; }
         if self.global_addrs.len() > 0 { write!(f, " global_addrs: {:?}", self.global_addrs)?; }
         write!(f, " }}")
+    }
+}
+
+impl Debug for FuncInst {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FuncInst::Normal{ func_type: ft, module: _, code: Func(_, locals, Expr(instrs)) } => {
+                write!(f, "NORMAL<type:{:?} locals:{:?} {:?}>", ft, locals, instrs)
+            }
+            FuncInst::Host{ func_type: ft, host_code: hc } => {
+                write!(f, "HOST<type:{:?} {}>", ft, hc)
+            },
+        }
     }
 }

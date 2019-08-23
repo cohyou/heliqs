@@ -18,7 +18,7 @@ enum Result {
     Trap,
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct Store {
     pub funcs: Vec<FuncInst>,
     pub tables: Vec<TableInst>,
@@ -44,7 +44,6 @@ pub struct ModuleInst {
 
 type HostFunc = String; // primitiveは関数名をStringで持つことにします
 
-#[derive(Debug)]
 pub enum FuncInst {
     Normal { func_type: FuncType, module: Rc<RefCell<ModuleInst>>, code: Func }, // module instanceは関数で取得するようにします
     Host { func_type: FuncType, host_code: HostFunc },
