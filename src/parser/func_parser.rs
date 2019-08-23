@@ -28,7 +28,7 @@ impl<R> Parser<R> where R: Read + Seek {
 
         self.module.funcs.push(func);
 
-        la!(self);p!(self.contexts[1]);
+        // la!(self);p!(self.contexts[1]);
         self.contexts.pop();
         self.match_rparen()?;
 

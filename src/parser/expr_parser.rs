@@ -29,8 +29,7 @@ macro_rules! instr_func {
 
 macro_rules! instr_label {
     ($this:ident, $v:ident, $instr:ident) => {{
-        let len = $this.contexts.len();
-        instr_id!($this, $v, $instr, $this.contexts[len - 1].labels);
+        instr_id!($this, $v, $instr, $this.contexts.last().unwrap().labels);
     }};
 }
 
@@ -59,8 +58,7 @@ macro_rules! instr_one_block {
         $this.consume()?;
 
         // label id
-        let len = $this.contexts.len();
-        let mut new_label_context = $this.contexts[len - 1].clone();
+        let mut new_label_context = $this.contexts.last().unwrap().clone();
         parse_optional_label_id!($this, new_label_context.labels);
         $this.contexts.push(new_label_context);
 
@@ -77,7 +75,7 @@ macro_rules! instr_one_block {
         // label id(repeated)
         $this.check_label_id()?;
 
-        p!($this.contexts[len]);
+        p!($this.contexts.last());
         $this.contexts.pop();
 
         $v.push(Instr::$instr(vec![vt], expr));
@@ -183,8 +181,7 @@ impl<R> Parser<R> where R: Read + Seek {
         self.consume()?;
 
         // label id
-        let len = self.contexts.len();
-        let mut new_label_context = self.contexts[len - 1].clone();
+        let mut new_label_context = self.contexts.last().unwrap().clone();
         parse_optional_label_id!(self, new_label_context.labels);
         self.contexts.push(new_label_context);
 
@@ -209,7 +206,7 @@ impl<R> Parser<R> where R: Read + Seek {
         // check label id(after end)
         self.check_label_id()?;
     
-        p!(self.contexts[len]);
+        p!(self.contexts.last());
         self.contexts.pop();
 
         instrs.push(Instr::If(vec![vt], expr1, expr2));
@@ -225,8 +222,7 @@ impl<R> Parser<R> where R: Read + Seek {
         loop {
             match &self.lookahead {
                 tk!(TokenKind::Id(_)) => {
-                    let len = self.contexts.len();
-                    let local_id = self.resolve_id(&self.contexts[len - 1].clone().labels)?;
+                    let local_id = self.resolve_id(&self.contexts.last().unwrap().clone().labels)?;
                     labelindices.push(local_id);
                 },
                 nm!(Number::Unsigned(n)) => {
@@ -249,9 +245,7 @@ impl<R> Parser<R> where R: Read + Seek {
     fn check_label_id(&mut self) -> Result<(), ParseError> {
         if let tk!(TokenKind::Id(s)) = &self.lookahead {
 
-            let contexts_len = self.contexts.len();
-            let len = self.contexts[contexts_len - 1].labels.len();
-            if let Some(label_s) = &self.contexts[contexts_len - 1].labels[len - 1] {
+            if let Some(label_s) = &self.contexts.last().unwrap().labels.last().unwrap() {
                 if s != label_s {
                     return Err(self.err2("invalid label of block end"));
                 }

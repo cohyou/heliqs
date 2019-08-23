@@ -26,32 +26,20 @@ pub struct Store {
     pub globals: Vec<GlobalInst>,
 }
 
-// impl Store {
-//     pub fn funcs(&self) -> Vec<&FuncInst> {
-//         let mut res = vec![];
-//         for inst in self.insts.iter() {
-//             if let StoreInst::Func(func_inst) = inst {
-//                 res.push(func_inst);
-//             }
-//         }
-//         res
-//     }
-// }
-
 type Addr = usize;  // 仕様は自由なのでひとまずusize
 pub type FuncAddr = Addr;
 pub type TableAddr = Addr;
 pub type MemAddr = Addr;
 type GlobalAddr = Addr;
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Default, PartialEq)]
 pub struct ModuleInst {
     pub types: Vec<FuncType>,
     pub func_addrs: Vec<FuncAddr>,
-    table_addrs: Vec<TableAddr>,
-    mem_addrs: Vec<MemAddr>,
-    global_addrs: Vec<GlobalAddr>,
-    exports: Vec<ExportInst>,
+    pub table_addrs: Vec<TableAddr>,
+    pub mem_addrs: Vec<MemAddr>,
+    pub global_addrs: Vec<GlobalAddr>,
+    pub exports: Vec<ExportInst>,
 }
 
 type HostFunc = String; // primitiveは関数名をStringで持つことにします
@@ -61,12 +49,6 @@ pub enum FuncInst {
     Normal { func_type: FuncType, module: Rc<RefCell<ModuleInst>>, code: Func }, // module instanceは関数で取得するようにします
     Host { func_type: FuncType, host_code: HostFunc },
 }
-
-// impl FuncInst {
-//     fn module_instance() -> &ModuleInst {
-        
-//     }
-// }
 
 type FuncElem = Option<FuncAddr>;
 
@@ -80,7 +62,7 @@ pub struct MemInst { data: Vec<u8>, max: Option<u32> }
 pub struct GlobalInst { value: Val, mutablity: Mutablity }
 
 #[derive(Debug, PartialEq)]
-struct ExportInst { name: String, value: ExternVal }
+pub struct ExportInst { name: String, value: ExternVal }
 
 #[derive(Debug, PartialEq)]
 pub enum ExternVal {
@@ -90,7 +72,7 @@ pub enum ExternVal {
     Global(GlobalAddr),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum StackEntry {
     Val(Val),
     Label(usize, Vec<Instr>),

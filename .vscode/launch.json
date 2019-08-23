@@ -19,7 +19,7 @@
                     "kind": "bin"
                 }
             },
-            "args": ["wat/f.wat", "-p"],
+            "args": ["wat/2.wat"],
             "cwd": "${workspaceFolder}"
         },
         {

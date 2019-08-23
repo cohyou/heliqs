@@ -8,7 +8,7 @@ fn main() {
     let file_name = &args[1];
     let mut reader = File::open(file_name).unwrap();
 
-    args.get(2).map(|s|
+    if let Some(s) = args.get(2) {
         match s.as_ref() {
             "-l" => lex(&mut reader),
             "-p" => {
@@ -23,9 +23,9 @@ fn main() {
             },
             _ => panic!("invalid option"),
         }
-    );
-
-    run(&mut reader);
+    } else {
+        run(&mut reader);
+    }    
 }
 
 use std::io::{Read, Seek};
@@ -59,6 +59,7 @@ fn run<R: Read + Seek>(reader: &mut R) {
         },
         _ => {},
     }
+    pp!(MODULE, parser.module);
 
     use heliqs::ValType;
     use heliqs::{Runtime, FuncInst, ExternVal};
@@ -69,6 +70,8 @@ fn run<R: Read + Seek>(reader: &mut R) {
     let mut rt = Runtime::new(Some(store));
     let extern_vals = vec![ExternVal::Func(0)];
     println!("module instance: {:?}", rt.instantiate(&parser.module, extern_vals));
+    pp!(STORE, rt.store);
+    pp!(STACK, rt.stack);
 }
 
 // fn ast_parse<R: Read + Seek>(mut reader: R) {

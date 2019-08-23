@@ -53,18 +53,18 @@ impl<R> Parser<R> where R: Read + Seek {
 
         self.match_keyword(Keyword::Param)?;
 
-        // param id
+        // param id        
         let len = self.contexts.len();
         if let tk!(TokenKind::Id(s)) = &self.lookahead {            
             if len > 1 {
                 let new_s = s.clone();                
-                self.contexts[len - 1].locals.push(Some(new_s));
+                self.contexts.last_mut().unwrap().locals.push(Some(new_s));
             }
             self.consume()?;
         } else {
             if len > 1 {
                 pp!(1, self.lookahead);
-                self.contexts[len - 1].locals.push(None);
+                self.contexts.last_mut().unwrap().locals.push(None);
             }
         }
 
