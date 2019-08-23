@@ -1,4 +1,4 @@
-#[macro_use]extern crate heliqs;
+#[macro_use] extern crate heliqs;
 
 use std::env;
 use std::fs::File;
@@ -25,7 +25,7 @@ fn main() {
         }
     } else {
         run(&mut reader);
-    }    
+    }
 }
 
 use std::io::{Read, Seek};
@@ -61,16 +61,19 @@ fn run<R: Read + Seek>(reader: &mut R) {
     }
     pp!(MODULE, parser.module);
 
-    // use heliqs::ValType;
-    // use heliqs::FuncInst, ExternVal;
+    use heliqs::Runtime;
     #[allow(unused_mut)] let mut store = Runtime::init_store();
+    #[allow(unused_mut)] let mut extern_vals = vec![];
+
+    // use heliqs::ValType;
+    // use heliqs::FuncInst;
+    // use heliqs::ExternVal;
     // let func_inst = FuncInst::Host { func_type: (vec![ValType::I32], vec![]), host_code: "log".to_string() };
     // store.funcs.push(func_inst);
+    // extern_vals.push(ExternVal::Func(0));
 
-    use heliqs::{Runtime, ExternVal};
     let mut rt = Runtime::new(Some(store));
-    let extern_vals = vec![ExternVal::Func(0)];
-    println!("module instance: {:?}", rt.instantiate(&parser.module, extern_vals));
+    pp!(MODINST, rt.instantiate(&parser.module, extern_vals));
     pp!(STORE, rt.store);
     pp!(STACK, rt.stack);
 }
@@ -86,7 +89,7 @@ fn run<R: Read + Seek>(reader: &mut R) {
     //         use heliqs::AstIterator;
     //         use heliqs::{Tree, Token, Loc};
     //         let mut iter = AstIterator::new(&cst);
-            
+
     //         let rp = Tree::Leaf(Token::right_paren(Loc::default()));
 
     //         let mut ast_parser = AstParser::new(&mut iter, &rp);

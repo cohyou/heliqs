@@ -9,6 +9,24 @@ use parser::*;
 
 pub use self::structure::*;
 
+macro_rules! execute_ibinop {
+    ($this:ident, $get:ident, $ct_val:ident, $ibinop: ident) => {{
+        let c2 = $this.$get();
+        let c1 = $this.$get();
+
+        let val =
+        match $ibinop {
+            IBinOp::Add => Val::$ct_val(c1 + c2),
+            IBinOp::Sub => Val::$ct_val(c1 - c2),
+            IBinOp::Mul => Val::$ct_val(c1 * c2),
+            IBinOp::Div(_) => Val::$ct_val(c1 / c2),
+            IBinOp::Rem(_) => Val::$ct_val(c1 % c2),
+            _ => unimplemented!(),
+        };
+        $this.stack.push(StackEntry::Val(val))
+    }};
+}
+
 #[derive(Default)]
 pub struct Runtime {
     pub store: Store,
@@ -76,8 +94,6 @@ impl Runtime {
         let mut func_addr_idx = 0;
         for extern_val in extern_vals {
             if let ExternVal::Func(func_addr) = extern_val {
-                // println!("func_addr: {:?}", func_addr);
-
                 module_inst.borrow_mut().func_addrs.insert(func_addr_idx, func_addr);
                 func_addr_idx += 1;
             }
@@ -125,7 +141,7 @@ impl Runtime {
                 let mut stack_values = vec![];
                 for _ in local_types.iter() {
                     if let Some(StackEntry::Val(v)) = self.stack.pop() {
-                        stack_values.push(v);
+                        stack_values.insert(0, v);
                     }
                 }
 
@@ -165,7 +181,7 @@ impl Runtime {
                     },
                     _ => {},
                 }
-                
+
             },
         }
 
@@ -173,30 +189,47 @@ impl Runtime {
     }
 
     fn execute_instr(&mut self, instr: Instr) {
-        match instr {            
-            Instr::Call(x) => { self.execute_call(x.try_into().unwrap()); },
-            Instr::Block(result_type, instrs) => { self.execute_block(result_type, &instrs); },
-            Instr::I32Const(val) => { self.stack.push(StackEntry::Val(Val::I32Const(val))); }
-            Instr::IBinOp(ValSize::V32, ibinop) => { self.execute_ibinop(&ibinop); }
+        match instr {
+            Instr::If(rt, instrs1, instrs2) => self.execute_if(rt, &instrs1, &instrs2),
+            Instr::Block(rt, instrs) => self.execute_block(rt, &instrs),
+            Instr::Call(x) => self.execute_call(x.try_into().unwrap()),
+
+            Instr::LocalGet(idx) => self.execute_local_get(idx.try_into().unwrap()),
+
+            Instr::I32Const(val) => self.stack.push(StackEntry::Val(Val::I32Const(val))),
+            Instr::I64Const(val) => self.stack.push(StackEntry::Val(Val::I64Const(val))),
+            Instr::IBinOp(vs, ibinop) => self.execute_ibinop(vs, &ibinop),
+            Instr::IRelOp(vs, irelop) => self.execute_irelop(vs, &irelop),
             _ => {},
         }
     }
 
-    fn execute_ibinop(&mut self, ibinop: &IBinOp) {
-        if let StackEntry::Val(Val::I32Const(c2)) = self.stack.pop().unwrap() {
-            if let StackEntry::Val(Val::I32Const(c1)) = self.stack.pop().unwrap() {
-                let val = 
-                match ibinop {
-                    IBinOp::Add => Val::I32Const(c1 + c2),
-                    IBinOp::Sub => Val::I32Const(c1 - c2),
-                    IBinOp::Mul => Val::I32Const(c1 * c2),
-                    IBinOp::Div(_) => Val::I32Const(c1 / c2),
-                    IBinOp::Rem(_) => Val::I32Const(c1 % c2),
-                    _ => unimplemented!(),
-                };
-                self.stack.push(StackEntry::Val(val))
+    fn execute_if(&mut self, result_type: ResultType, expr1: &Expr, expr2: &Expr) {
+        // 2. Pop the value i32.const 𝑐 from the stack.
+        if let StackEntry::Val(Val::I32Const(c)) = self.stack.pop().unwrap() {
+            // 3. Let 𝑛 be the arity |𝑡?| of the result type 𝑡?.
+            let n = result_type.len();
+
+            // 4. Let 𝐿 be the label whose arity is 𝑛 and whose continuation is the end of the if instruction.
+            let label = StackEntry::Label(n.try_into().unwrap(), vec![]);
+
+            if c != 0 {
+                self.enter_expr(expr1, label);
+            } else {
+                self.enter_expr(expr2, label);
             }
         }
+    }
+
+    fn execute_block(&mut self, result_type: ResultType, expr: &Expr) {
+        // 1. Let "n" be the arity |t^?| of the <result type> "t^?".
+        let n = result_type.len();
+
+        // 2. Let L be the label whose arity is "n" and whose continuation is the end of the block.
+        let label = StackEntry::Label(n.try_into().unwrap(), vec![]);
+
+        // 3. <Enter> the block "instr^*" with label L.
+        self.enter_expr(expr, label);
     }
 
     fn execute_call(&mut self, x: FuncAddr) {
@@ -210,32 +243,80 @@ impl Runtime {
         self.invoke_function(func_addr);
     }
 
-    fn execute_block(&mut self, result_type: ResultType, expr: &Expr) {
-        // 1. Let "n" be the arity |t^?| of the <result type> "t^?".
-        let n = result_type.len();
+    fn execute_local_get(&mut self, idx: usize) {
+        let val = {
+        // 1. Let F be the current frame.
+        let (_, current_frame) = self.get_current_frame();
 
-        // 2. Let L be the label whose arity is "n" and whose continuation is the end of the block.
-        let label = StackEntry::Label(n.try_into().unwrap(), vec![]);
+        // 3. Let val be the value F.locals[𝑥].
+        let val = &current_frame.locals[idx];
+        val.clone()
+        };
 
-        // 3. <Enter> the block "instr^*" with label L.
-        self.enter_exprs(expr, label);
+        // 4. Push the value val to the stack.
+        self.stack.push(StackEntry::Val(val));
     }
 
-    fn enter_exprs(&mut self, expr: &Expr, label: StackEntry) {
+    fn execute_ibinop(&mut self, vs:ValSize, ibinop: &IBinOp) {
+        match vs {
+            ValSize::V32 => execute_ibinop!(self, get_const_i32, I32Const, ibinop),
+            ValSize::V64 => execute_ibinop!(self, get_const_i64, I64Const, ibinop),
+        }
+    }
+
+    fn execute_irelop(&mut self, _vs: ValSize, irelop: &IRelOp) {
+        // 1. Assert: due to validation, two values of value type 𝑡 are on the top of the stack.
+
+        // 2. Pop the value 𝑡.const 𝑐2 from the stack.
+        let c2 = self.get_const_i64();
+
+        // 3. Pop the value 𝑡.const 𝑐1 from the stack.
+        let c1 = self.get_const_i64();
+
+        // 4. Let 𝑐 be the result of computing relop𝑡(𝑐1, 𝑐2).
+        let bool_res = match irelop {
+            IRelOp::Eq => c1 == c2,
+            IRelOp::Le(_) => c1 <= c2,
+            _ => unimplemented!(),
+        };
+
+        let bool_val = if bool_res { 1 } else { 0 };
+
+        // 5. Push the value i32.const 𝑐 to the stack.
+        self.stack.push(StackEntry::Val(Val::I32Const(bool_val)));
+    }
+
+    fn get_const_i32(&mut self) -> u32 {
+        let entry = self.stack.pop().unwrap();
+        if let StackEntry::Val(Val::I32Const(c)) = entry {
+            c
+        } else {
+            panic!("get_const_i32");
+        }
+    }
+
+    fn get_const_i64(&mut self) -> u64 {
+        let entry = self.stack.pop().unwrap();
+        if let StackEntry::Val(Val::I64Const(c)) = entry {
+            c
+        } else {
+            panic!("get_const_i64");
+        }
+    }
+
+    fn enter_expr(&mut self, expr: &Expr, label: StackEntry) {
 
         // 1. Push L to the stack.
         self.stack.push(label);
 
         // 2. Jump to the start of the instruction sequence <instr^*>.
         for instr in expr.0.iter() {
-            // println!("enter_exprs: {:?}", instr);
             self.execute_instr(instr.clone());
         }
 
         self.exit_exprs();
     }
 
-    // #[allow(dead_code)]
     fn exit_exprs(&mut self) {
         // 1. Let m be the number of values on the top of the stack.
         let mut stack_iter = self.stack.iter();
@@ -286,7 +367,7 @@ impl Runtime {
     fn get_current_frame(&self) -> (&usize, &Frame) {
         let mut stack_iter = self.stack.iter();
         let activation = stack_iter.rfind(|entry| self.is_stack_entry_activation(entry));
-        p!(self.stack);
+        
         if let Some(StackEntry::Activation(arity, frame)) = activation {
             (arity, frame)
         } else {
@@ -313,7 +394,7 @@ impl Debug for Store {
             writeln!(f, " funcs:")?;
             for func in &self.funcs {
                 writeln!(f, "   {:?}", func)?;
-            }            
+            }
         }
         if self.tables.len() > 0 { writeln!(f, " tables: {:?}", self.tables)?; }
         if self.mems.len() > 0 { writeln!(f, " mems: {:?}", self.mems)?; }
