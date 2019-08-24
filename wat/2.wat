@@ -4,6 +4,7 @@
   ;; (type $i64ret (func (result i64)))
   ;; (type $tak (func (param i64) (param i64) (param i64) (result i64)))
   (type $fib (func (param i64) (result i64)))
+  (type $paramtest (func (param i64) (result i64)))
 
   ;; (func $const (type $i32ret) i32.const 42)
   ;; (func $f1add (type $i32ret) i32.const 42 i32.const 8734 i32.add)
@@ -32,27 +33,28 @@
   ;;   end
   ;; )
 
-  (func $fib (type $fib) (param i64) (result i64)
-    local.get 0
-    i64.const 0
-    i64.eq
-    if (result i64)
-      i64.const 0
-    else
-      local.get 0
-      i64.const 1
-      i64.eq
-      if (result i64)
-        i64.const 1
-      else
-        local.get 0 i64.const 1 i64.sub call $fib
-        local.get 0 i64.const 2 i64.sub call $fib
-        i64.add
-      end
-    end
-  )
+  ;; (func $fib (type $fib) (param i64) (result i64)
+  ;;   local.get 0
+  ;;   i64.const 0
+  ;;   i64.eq
+  ;;   if (result i64)
+  ;;     i64.const 0
+  ;;   else
+  ;;     local.get 0
+  ;;     i64.const 1
+  ;;     i64.eq
+  ;;     if (result i64)
+  ;;       i64.const 1
+  ;;     else
+  ;;       local.get 0 i64.const 1 i64.sub call $fib
+  ;;       local.get 0 i64.const 2 i64.sub call $fib
+  ;;       i64.add
+  ;;     end
+  ;;   end
+  ;; )
   
-  (func $start (type $fib) i64.const 30 call $fib)
+  (func $f (type $paramtest) (param $x i64) (result i64) local.get $x i64.const 2 i64.mul)
+  (func $start (type $paramtest) i64.const 45 call $f)
 
   (start $start)
 )

@@ -14,8 +14,13 @@ impl<R> Parser<R> where R: Read + Seek {
         self.contexts.push(Context::default());
 
         // typeuse
-        let mut _results = vec![];
-        func.0 = self.parse_typeuse(&mut func.1, &mut _results)?;
+        let mut _ft = FuncType::default();
+        func.0 = self.parse_typeuse(&mut _ft.0, &mut _ft.1)?;
+
+        self.check_typeuse(func.0, _ft)?;
+
+        let typedef = &self.contexts[0].typedefs[func.0 as usize];
+        func.1.extend(typedef.0.clone());
 
         // locals
         parse_field!(self, Local, 
