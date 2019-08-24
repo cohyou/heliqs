@@ -21,6 +21,21 @@ fn main() {
                 }
                 return;
             },
+            "-c" => {                
+                use heliqs::Parser;
+                use heliqs::compiler::*;
+                let mut parser = Parser::new(reader);
+
+                match parser.parse() {
+                    Err(err) => {
+                        println!("PARSE ERROR: {:?}", err);
+                        return;
+                    },
+                    _ => {},
+                }
+
+                compile(&parser.module);                
+            }
             _ => panic!("invalid option"),
         }
     } else {
