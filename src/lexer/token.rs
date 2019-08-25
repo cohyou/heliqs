@@ -4,14 +4,15 @@ use super::keyword::*;
 
 #[derive(PartialEq, Clone)]
 pub enum Number {
-    Unsigned(usize),
+    Integer(usize),
+    FloatingPoint(f64),
 }
 
 impl Debug for Number {
    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
        match &self {
-           Number::Unsigned(num) => write!(f, "{:?}", num),
-        //    _ => write!(f, "{:?}", self)
+           Number::Integer(num) => write!(f, "{:?}", num),
+           Number::FloatingPoint(num) => write!(f, "{:?}", num),        
        }        
     }
 }
@@ -35,7 +36,12 @@ impl Token {
     pub fn empty(loc: Loc) -> Self { Self::new(TokenKind::Empty, loc) }
 
     pub fn keyword(kw: Keyword, loc: Loc) -> Self { Self::new(TokenKind::Keyword(kw), loc) }
-    pub fn number_u(num: usize, loc: Loc) -> Self { Self::new(TokenKind::Number(Number::Unsigned(num)), loc) }
+    pub fn number_u(num: usize, loc: Loc) -> Self { Self::new(TokenKind::Number(Number::Integer(num)), loc) }
+    pub fn number_i(num: isize, loc: Loc) -> Self {
+            let n = unsafe { std::mem::transmute::<isize, usize>(num) };
+            Self::new(TokenKind::Number(Number::Integer(n)), loc)
+        }
+    pub fn number_f(num: f64, loc: Loc) -> Self { Self::new(TokenKind::Number(Number::FloatingPoint(num)), loc) }
     pub fn string(s: String, loc: Loc) -> Self { Self::new(TokenKind::String(s), loc) }
     pub fn id(n: String, loc: Loc) -> Self { Self::new(TokenKind::Id(n), loc) }
     pub fn left_paren(loc: Loc) -> Self { Self::new(TokenKind::LeftParen, loc) }

@@ -20,7 +20,7 @@
                     "kind": "bin"
                 }
             },
-            "args": ["wast/2.wat"],
+            "args": ["wast/3.wat", "-l"],
             "cwd": "${workspaceFolder}"
         },
         {

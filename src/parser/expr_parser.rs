@@ -36,7 +36,7 @@ macro_rules! instr_label {
 macro_rules! instr_const {
     ($this:ident, $v:ident, $instr:ident, $tp:ident, $err:expr) => {{
         $this.consume()?;
-        if let nm!(Number::Unsigned(n)) = $this.lookahead {
+        if let nm!(Number::Integer(n)) = $this.lookahead {
             $v.push(Instr::$instr(n as $tp));
             $this.consume()?;
         } else {
@@ -219,7 +219,7 @@ impl<R> Parser<R> where R: Read + Seek {
                     let local_id = self.resolve_id(&self.contexts.last().unwrap().clone().labels)?;
                     labelindices.push(local_id);
                 },
-                nm!(Number::Unsigned(n)) => {
+                nm!(Number::Integer(n)) => {
                     labelindices.push(*n as u32);
                     self.consume()?;
                 },

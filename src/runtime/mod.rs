@@ -16,10 +16,10 @@ macro_rules! execute_ibinop {
 
         let val =
         match $ibinop {
-            IBinOp::Add => Val::$ct_val(c1 + c2),
-            IBinOp::Sub => Val::$ct_val(c1 - c2),
-            IBinOp::Mul => Val::$ct_val(c1 * c2),
-            IBinOp::Div(_) => Val::$ct_val(c1 / c2),
+            IBinOp::Add => Val::$ct_val(c1.wrapping_add(c2)),
+            IBinOp::Sub => Val::$ct_val(c1.wrapping_sub(c2)),
+            IBinOp::Mul => Val::$ct_val(c1.wrapping_mul(c2)),
+            IBinOp::Div(_) => Val::$ct_val(c1.wrapping_div(c2)),
             IBinOp::Rem(_) => Val::$ct_val(c1 % c2),
             _ => unimplemented!(),
         };

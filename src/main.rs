@@ -21,7 +21,7 @@ fn main() {
                 }
                 return;
             },
-            "-c" => {                
+            "-b" => {                
                 use heliqs::Parser;
                 use heliqs::mod2wasm;
                 let mut parser = Parser::new(reader);

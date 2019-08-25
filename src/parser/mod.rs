@@ -165,7 +165,7 @@ impl<R> Parser<R> where R: Read + Seek {
     }
 
     fn parse_num<T: TryFrom<usize>>(&mut self) -> Result<T, ParseError> {
-        if let nm!(Number::Unsigned(n)) = &self.lookahead {
+        if let nm!(Number::Integer(n)) = &self.lookahead {
             if let Ok(num) = T::try_from(n.clone()) {
                 self.consume()?;
                 Ok(num)
@@ -184,7 +184,7 @@ impl<R> Parser<R> where R: Read + Seek {
         limits.min = self.parse_num::<u32>()?;
 
         // max(optional)
-        if let nm!(Number::Unsigned(_)) = &self.lookahead {
+        if let nm!(Number::Integer(_)) = &self.lookahead {
             limits.max = Some(self.parse_num::<u32>()?);
         }
 
@@ -204,7 +204,7 @@ impl<R> Parser<R> where R: Read + Seek {
 
     fn resolve_id(&mut self, from: &Vec<Option<Id>>) -> Result<u32, ParseError> {
         match &self.lookahead {
-            nm!(Number::Unsigned(n)) => {
+            nm!(Number::Integer(n)) => {
                 let res = u32::try_from(n.clone())?;
                 self.consume()?;
                 Ok(res)

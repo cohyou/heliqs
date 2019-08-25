@@ -22,7 +22,7 @@ pub struct Lexer<R: Read + Seek> {
     peeked_token: Option<Token>,
 }
 
-pub type LexerResult = Result<Token, LexError>;
+pub type LexResult = Result<Token, LexError>;
 
 impl<R> Lexer<R> where R: Read + Seek {
 
@@ -33,15 +33,15 @@ pub fn new(mut reader: R) -> Lexer<R> {
     let current = if n == 0 { 0xFF } else { buf[0] };
 
     Lexer {
-        reader: reader, 
-        current: current, 
-        loc: loc, 
-        peeked_byte: 0, 
-        peeked_token: None 
+        reader: reader,
+        current: current,
+        loc: loc,
+        peeked_byte: 0,
+        peeked_token: None
     }
 }
 
-pub fn next_token(&mut self) -> LexerResult {
+pub fn next_token(&mut self) -> LexResult {
     if let Some(peeked) = &self.peeked_token {
         let result = peeked.clone();
         self.peeked_token = None;
@@ -51,7 +51,7 @@ pub fn next_token(&mut self) -> LexerResult {
     }
 }
 
-pub fn peek_token(&mut self) -> LexerResult {
+pub fn peek_token(&mut self) -> LexResult {
     if self.peeked_token.is_none() {
         self.peeked_token = Some(self.next_token_internal()?);
     }
@@ -59,7 +59,7 @@ pub fn peek_token(&mut self) -> LexerResult {
     Ok(result.unwrap())
 }
 
-fn next_token_internal(&mut self) -> LexerResult {
+fn next_token_internal(&mut self) -> LexResult {
 
     loop {
         match self.current {
@@ -106,47 +106,14 @@ fn next_token_internal(&mut self) -> LexerResult {
             },
 
             // num or hexnum (uN)
-            b'0' ... b'9' => {
+            b'0' ... b'9' => return self.lex_number(b'+', self.loc.added(1)),
 
-                if self.current == b'0' {
-                    if self.peek()? == b'x' {
-                        self.read()?;
-                        self.loc.add_pos();  // for 0
-                        self.loc.add_pos();  // for x
-                        // hexnum
-                        self.current = self.read()?;
-                        return Ok(Token::number_u(0, self.loc))
-                    }
-                }
-
-                // num
-                let mut num = 0;
-                let mut num_c = self.current;
-                loop {
-                    match num_c {
-                        b'_' => self.loc.add_pos(),
-                        b'0' => { self.loc.add_pos(); num = num * 10 + 0; },
-                        b'1' => { self.loc.add_pos(); num = num * 10 + 1; },
-                        b'2' => { self.loc.add_pos(); num = num * 10 + 2; },
-                        b'3' => { self.loc.add_pos(); num = num * 10 + 3; },
-                        b'4' => { self.loc.add_pos(); num = num * 10 + 4; },
-                        b'5' => { self.loc.add_pos(); num = num * 10 + 5; },
-                        b'6' => { self.loc.add_pos(); num = num * 10 + 6; },
-                        b'7' => { self.loc.add_pos(); num = num * 10 + 7; },
-                        b'8' => { self.loc.add_pos(); num = num * 10 + 8; },
-                        b'9' => { self.loc.add_pos(); num = num * 10 + 9; },
-                        0xFF => return Err(LexError::eof(self.loc)),
-                        _ => break,
-                    }
-                    num_c = self.read()?;
-                }
-
-                self.current = num_c;
-                return Ok(Token::number_u(num, self.loc))
-            },
-
-            // number (sN or fN)
-            b'+' | b'-' => return Ok(Token::number_u(0, self.loc)),
+            // number
+            b @ b'+' | b @ b'-' => {
+                self.loc.add_pos();
+                self.current = self.read()?;
+                return self.lex_number(b, self.loc);
+            }
 
             // string
             b'"' => {
@@ -215,6 +182,87 @@ fn next_token_internal(&mut self) -> LexerResult {
     }
 }
 
+pub(super) fn lex_number(&mut self, sign: u8, begin: Loc) -> LexResult {
+
+    if self.current == b'0' {
+        if self.peek()? == b'x' {
+            self.read()?;
+            self.loc.add_pos();  // for 0
+            self.loc.add_pos();  // for x
+            // hexnum
+            self.current = self.read()?;
+            return Ok(Token::number_u(0, self.loc))
+        }
+    }
+
+    // num
+    let mut num = 0;
+    let mut frac = 0.0_f64;
+    let mut current = self.current;
+    loop {
+        match current {
+            b'_' => self.loc.add_pos(),
+            b'.' => {
+                // begin frac
+                self.loc.add_pos();                
+                current = self.read()?;
+                let mut digit = 1;
+                loop {
+                    let powed = 10.0f64.powi(digit);
+                    match current {
+                        b'_' => { self.loc.add_pos(); current = self.read()?; continue; },
+                        b'0' => { self.loc.add_pos(); frac = frac + 0.0 / powed; },
+                        b'1' => { self.loc.add_pos(); frac = frac + 1.0 / powed; },
+                        b'2' => { self.loc.add_pos(); frac = frac + 2.0 / powed; },
+                        b'3' => { self.loc.add_pos(); frac = frac + 3.0 / powed; },
+                        b'4' => { self.loc.add_pos(); frac = frac + 4.0 / powed; },
+                        b'5' => { self.loc.add_pos(); frac = frac + 5.0 / powed; },
+                        b'6' => { self.loc.add_pos(); frac = frac + 6.0 / powed; },
+                        b'7' => { self.loc.add_pos(); frac = frac + 7.0 / powed; },
+                        b'8' => { self.loc.add_pos(); frac = frac + 8.0 / powed; },
+                        b'9' => { self.loc.add_pos(); frac = frac + 9.0 / powed; },
+                        0xFF => return Err(LexError::eof(self.loc)),
+                        _ => break,
+                    }
+                    digit += 1;                
+                    current = self.read()?;
+                }
+
+                let mut float = frac + num as f64;
+
+                match sign {
+                    b'+' => {},
+                    b'-' => { float = -float },
+                    _ => return Err(self.err(self.current)),
+                }    
+                self.current = current;
+                
+                return Ok(Token::number_f(float, begin));
+            }
+            b'0' => { self.loc.add_pos(); num = num * 10 + 0; },
+            b'1' => { self.loc.add_pos(); num = num * 10 + 1; },
+            b'2' => { self.loc.add_pos(); num = num * 10 + 2; },
+            b'3' => { self.loc.add_pos(); num = num * 10 + 3; },
+            b'4' => { self.loc.add_pos(); num = num * 10 + 4; },
+            b'5' => { self.loc.add_pos(); num = num * 10 + 5; },
+            b'6' => { self.loc.add_pos(); num = num * 10 + 6; },
+            b'7' => { self.loc.add_pos(); num = num * 10 + 7; },
+            b'8' => { self.loc.add_pos(); num = num * 10 + 8; },
+            b'9' => { self.loc.add_pos(); num = num * 10 + 9; },
+            0xFF => return Err(LexError::eof(self.loc)),
+            _ => break,
+        }
+        current = self.read()?;
+    }
+
+    self.current = current;
+    match sign {
+        b'+' => Ok(Token::number_u(num, begin)),
+        b'-' => Ok(Token::number_i(-(num as isize), begin)),
+        _ => Err(self.err(self.current)),
+    }    
+}
+
 fn read(&mut self) -> Result<u8, LexError> {
     if self.peeked_byte == 0 {
         self.read_internal()
@@ -222,7 +270,7 @@ fn read(&mut self) -> Result<u8, LexError> {
         let peeked = self.peeked_byte;
         self.peeked_byte = 0;
         Ok(peeked)
-    }    
+    }
 }
 
 fn peek(&mut self) -> Result<u8, LexError> {
@@ -255,4 +303,13 @@ fn is_idchar(c: u8) -> bool {
         b':' | b'<' | b'=' | b'>' | b'?' | b'@' | b'\\' | b'^' | b'_' | b'`' | b'|' | b'~' => true,
         _ => false,
     }
+}
+
+#[test]
+fn test() {
+    // unsafe {
+    // let u = std::mem::transmute::<i8, u8>(-1);
+    // println!("{:?}", u);
+    // }
+    p!(Token::number_i(-1, Loc::default()));
 }
