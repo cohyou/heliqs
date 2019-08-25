@@ -198,6 +198,8 @@ impl Runtime {
 
             Instr::I32Const(val) => self.stack.push(StackEntry::Val(Val::I32Const(val))),
             Instr::I64Const(val) => self.stack.push(StackEntry::Val(Val::I64Const(val))),
+            Instr::F32Const(val) => self.stack.push(StackEntry::Val(Val::F32Const(val))),
+            Instr::F64Const(val) => self.stack.push(StackEntry::Val(Val::F64Const(val))),
             Instr::IBinOp(vs, ibinop) => self.execute_ibinop(vs, &ibinop),
             Instr::IRelOp(vs, irelop) => self.execute_irelop(vs, &irelop),
             _ => {},
