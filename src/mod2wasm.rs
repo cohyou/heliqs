@@ -272,8 +272,8 @@ fn instr2wasm(instr: &Instr) -> Vec<Byte> {
 
         Instr::I32Const(n) => [vec![0x41], unsigned32_to_wasm(*n)].concat(),
         Instr::I64Const(n) => [vec![0x42], unsigned64_to_wasm(*n)].concat(),
-        Instr::F32Const(n) => [vec![0x43], unsigned32_to_wasm(n.to_bits())].concat(),
-        Instr::F64Const(n) => [vec![0x44], unsigned64_to_wasm(n.to_bits())].concat(),
+        Instr::F32Const(n) => [vec![0x43], n.to_bits().to_le_bytes().to_vec()].concat(),
+        Instr::F64Const(n) => [vec![0x44], n.to_bits().to_le_bytes().to_vec()].concat(),
 
         Instr::ITestOp(vs, ITestOp::Eqz) => {
             match vs {
