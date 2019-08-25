@@ -23,7 +23,7 @@ fn main() {
             },
             "-b" => {                
                 use heliqs::Parser;
-                use heliqs::mod2wasm;
+                use heliqs::module_to_wasm;
                 let mut parser = Parser::new(reader);
 
                 match parser.parse() {
@@ -34,7 +34,7 @@ fn main() {
                     _ => {},
                 }
 
-                match mod2wasm(&parser.module) {
+                match module_to_wasm(&parser.module) {
                     Ok(_) => {},
                     Err(_e) => {},
                 }

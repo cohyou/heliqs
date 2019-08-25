@@ -8,7 +8,7 @@ use context::*;
 
 type Byte = u8;
 
-pub fn mod2wasm(module: &Module) -> std::io::Result<()> {
+pub fn module_to_wasm(module: &Module) -> std::io::Result<()> {
     let mut file = File::create("wasm/_.wasm")?;
     file.write_all(&module2wasm(&module))?;
     Ok(())
