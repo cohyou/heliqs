@@ -23,7 +23,7 @@ fn main() {
             },
             "-c" => {                
                 use heliqs::Parser;
-                use heliqs::compiler::*;
+                use heliqs::mod2wasm;
                 let mut parser = Parser::new(reader);
 
                 match parser.parse() {
@@ -34,7 +34,7 @@ fn main() {
                     _ => {},
                 }
 
-                compile(&parser.module);                
+                mod2wasm(&parser.module);                
             }
             _ => panic!("invalid option"),
         }

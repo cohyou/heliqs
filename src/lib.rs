@@ -4,13 +4,13 @@ mod instr;
 mod context;
 mod lexer;
 mod parser;
-mod compiler;
+mod mod2wasm;
 mod runtime;
 
 pub use annot::*;
 pub use instr::*;
 pub use lexer::*;
 pub use parser::*;
-pub use compiler::*;
+pub use mod2wasm::*;
 pub use runtime::*;
 
