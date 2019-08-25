@@ -42,7 +42,7 @@ fn importsection2wasm(imps: &Vec<Import>) -> Vec<Byte> {
 }
 
 fn funcsection2wasm(funcs: &Vec<Func>) -> Vec<Byte> {
-    let typeindices = funcs.iter().map(|f| f.0).map(typeidx2wasm).collect::<Vec<Vec<Byte>>>().concat();
+    let typeindices = funcs.iter().map(|f| &f.0).map(typeidx2wasm).collect::<Vec<Vec<Byte>>>().concat();
     section2wasm(3, bytevector2wasm(typeindices))
 }
 
@@ -93,7 +93,7 @@ fn import2wasm(imp: &Import) -> Vec<Byte> {
 
 fn importdesc2wasm(desc: &ImportDesc) -> Vec<Byte> {
     match desc {
-        ImportDesc::Func(idx) =>  [vec![0x00], typeidx2wasm(*idx)].concat(),
+        ImportDesc::Func(idx) =>  [vec![0x00], typeidx2wasm(idx)].concat(),
         ImportDesc::Table(tt) =>  [vec![0x01], tabletype2wasm(tt)].concat(),
         ImportDesc::Mem(mt) =>    [vec![0x02], memtype2wasm(mt)].concat(),
         ImportDesc::Global(gt) => [vec![0x03], globaltype2wasm(gt)].concat(),
@@ -122,16 +122,16 @@ fn export2wasm(exp: &Export) -> Vec<Byte> {
 
 fn exportdesc2wasm(desc: &ExportDesc) -> Vec<Byte> {
     match desc {
-        ExportDesc::Func(idx) =>   [vec![0x00], typeidx2wasm(*idx)].concat(),
-        ExportDesc::Table(idx) =>  [vec![0x01], tableidx2wasm(*idx)].concat(),
-        ExportDesc::Mem(idx) =>    [vec![0x02], memidx2wasm(*idx)].concat(),
-        ExportDesc::Global(idx) => [vec![0x03], globalidx2wasm(*idx)].concat(),
+        ExportDesc::Func(idx) =>   [vec![0x00], typeidx2wasm(idx)].concat(),
+        ExportDesc::Table(idx) =>  [vec![0x01], tableidx2wasm(idx)].concat(),
+        ExportDesc::Mem(idx) =>    [vec![0x02], memidx2wasm(idx)].concat(),
+        ExportDesc::Global(idx) => [vec![0x03], globalidx2wasm(idx)].concat(),
     }
 }
 
 fn elem2wasm(elem: &Elem) -> Vec<Byte> {
     [
-        tableidx2wasm(elem.table),
+        tableidx2wasm(&elem.table),
         expr2wasm(&elem.offset),
         bytevector2wasm(elem.init.iter().map(funcidx2wasm)
             .collect::<Vec<Vec<Byte>>>().concat()),
@@ -167,7 +167,7 @@ fn local2wasm(local: &ValType) -> Vec<Byte> {
 
 fn data2wasm(data: &Data) -> Vec<Byte> {
     [
-        memidx2wasm(data.data),
+        memidx2wasm(&data.data),
         expr2wasm(&data.offset),
         datastring2wasm(&data.init),
     ]
@@ -187,13 +187,13 @@ fn section2wasm(id: Byte, cont: Vec<Byte>) -> Vec<Byte> {
     .concat()
 }
 
-fn typeidx2wasm(idx: TypeIndex) -> Vec<Byte> { unsigned32_to_wasm(idx) }
+fn typeidx2wasm(idx: &TypeIndex) -> Vec<Byte> { unsigned32_to_wasm(*idx) }
 fn funcidx2wasm(idx: &FuncIndex) -> Vec<Byte> { unsigned32_to_wasm(*idx) }
-fn tableidx2wasm(idx: TableIndex) -> Vec<Byte> { unsigned32_to_wasm(idx) }
-fn memidx2wasm(idx: MemIndex) -> Vec<Byte> { unsigned32_to_wasm(idx) }
-fn globalidx2wasm(idx: GlobalIndex) -> Vec<Byte> { unsigned32_to_wasm(idx) }
-fn localidx2wasm(idx: LocalIndex) -> Vec<Byte> { unsigned32_to_wasm(idx) }
-fn labelidx2wasm(idx: LabelIndex) -> Vec<Byte> { unsigned32_to_wasm(idx) }
+fn tableidx2wasm(idx: &TableIndex) -> Vec<Byte> { unsigned32_to_wasm(*idx) }
+fn memidx2wasm(idx: &MemIndex) -> Vec<Byte> { unsigned32_to_wasm(*idx) }
+fn globalidx2wasm(idx: &GlobalIndex) -> Vec<Byte> { unsigned32_to_wasm(*idx) }
+fn localidx2wasm(idx: &LocalIndex) -> Vec<Byte> { unsigned32_to_wasm(*idx) }
+fn labelidx2wasm(idx: &LabelIndex) -> Vec<Byte> { unsigned32_to_wasm(*idx) }
 
 fn expr2wasm(expr: &Expr) -> Vec<Byte> {
     [
@@ -207,62 +207,73 @@ fn instr2wasm(instr: &Instr) -> Vec<Byte> {
     match instr {
         Instr::Unreachable => vec![0x00],
         Instr::Nop => vec![0x01],
-//         Instr::Block => vec![0x02],
-//         Instr::Loop => vec![0x03],
-//         Instr::If => vec![0x04],
-//         Instr::Else => vec![0x05],
-
-//         Instr::End => vec![0x0B],
-
-//         Instr::Br => vec![0x0C],
-//         Instr::BrIf => vec![0x0D],
-//         Instr::BrTable => vec![0x0E],
+        Instr::Block(rt, expr) => [
+            vec![0x02], blocktype2wasm(&rt), expr2wasm(expr), vec![0x0B]
+        ].concat(),
+        Instr::Loop(rt, expr) => [
+            vec![0x03], blocktype2wasm(&rt), expr2wasm(expr), vec![0x0B]
+        ].concat(),
+        Instr::If(rt, expr1, expr2) => {
+            let true_term = [vec![0x04], blocktype2wasm(&rt), expr2wasm(expr1)].concat();
+            if expr2.0.is_empty() {
+                [true_term, vec![0x0B]].concat()
+            } else {
+                [true_term, vec![0x05], expr2wasm(expr2), vec![0x0B]].concat()
+            }
+        },
+        Instr::Br(labelidx) => [vec![0x0C], labelidx2wasm(labelidx)].concat(),
+        Instr::BrIf(labelidx) => [vec![0x0D], labelidx2wasm(labelidx)].concat(),
+        Instr::BrTable(indices, idx) => [
+            vec![0x0E], 
+            vector2wasm(indices.iter().map(labelidx2wasm).collect()), 
+            labelidx2wasm(idx)
+        ].concat(),
         Instr::Return => vec![0x0F],
-//         Instr::Call => vec![0x10],
-//         Instr::Indirect => vec![0x11],
+        Instr::Call(funcidx) => [vec![0x10], funcidx2wasm(funcidx)].concat(),
+        Instr::CallIndirect(typeidx) => [vec![0x11], typeidx2wasm(typeidx), vec![0x00]].concat(),
 
         Instr::Drop => vec![0x1A],
         Instr::Select => vec![0x1B],
 
-//         Instr::LocalGet => vec![0x20],
-//         Instr::LocalSet => vec![0x21],
-//         Instr::LocalTee => vec![0x22],
-//         Instr::GlobalGet => vec![0x23],
-//         Instr::GlobalSet => vec![0x24],
+        Instr::LocalGet(x) => [vec![0x20], localidx2wasm(x)].concat(),
+        Instr::LocalSet(x) => [vec![0x21], localidx2wasm(x)].concat(),
+        Instr::LocalTee(x) => [vec![0x22], localidx2wasm(x)].concat(),
+        Instr::GlobalGet(x) => [vec![0x23], globalidx2wasm(x)].concat(),
+        Instr::GlobalSet(x) => [vec![0x24], globalidx2wasm(x)].concat(),
 
-//         Instr::Load(ValType::I32) => vec![0x28],
-//         Instr::Load(ValType::I64) => vec![0x29],
-//         Instr::Load(ValType::F32) => vec![0x2A],
-//         Instr::Load(ValType::F64) => vec![0x2B],
-//         Instr::ILoad8(ValSize::V32, ValSign::S) => vec![0x2C],
-//         Instr::ILoad8(ValSize::V32, ValSign::U) => vec![0x2D],
-//         Instr::ILoad16(ValSize::V32, ValSign::S) => vec![0x2E],
-//         Instr::ILoad16(ValSize::V32, ValSign::U) => vec![0x2F],
+        Instr::Load(ValType::I32, memarg) => [vec![0x28], memarg2wasm(memarg)].concat(),
+        Instr::Load(ValType::I64, memarg) => [vec![0x29], memarg2wasm(memarg)].concat(),
+        Instr::Load(ValType::F32, memarg) => [vec![0x2A], memarg2wasm(memarg)].concat(),
+        Instr::Load(ValType::F64, memarg) => [vec![0x2B], memarg2wasm(memarg)].concat(),
+        Instr::ILoad8(ValSize::V32, ValSign::S, memarg) => [vec![0x2C], memarg2wasm(memarg)].concat(),
+        Instr::ILoad8(ValSize::V32, ValSign::U, memarg) => [vec![0x2D], memarg2wasm(memarg)].concat(),
+        Instr::ILoad16(ValSize::V32, ValSign::S, memarg) => [vec![0x2E], memarg2wasm(memarg)].concat(),
+        Instr::ILoad16(ValSize::V32, ValSign::U, memarg) => [vec![0x2F], memarg2wasm(memarg)].concat(),
 
-//         Instr::ILoad8(ValSize::V64, ValSign::S) => vec![0x30],
-//         Instr::ILoad8(ValSize::V64, ValSign::U) => vec![0x31],
-//         Instr::ILoad16(ValSize::V64, ValSign::S) => vec![0x32],
-//         Instr::ILoad16(ValSize::V64, ValSign::U) => vec![0x33],
-//         Instr::ILoad32(ValSize::V64, ValSign::S) => vec![0x34],
-//         Instr::ILoad32(ValSize::V64, ValSign::U) => vec![0x35],
+        Instr::ILoad8(ValSize::V64, ValSign::S, memarg) => [vec![0x30], memarg2wasm(memarg)].concat(),
+        Instr::ILoad8(ValSize::V64, ValSign::U, memarg) => [vec![0x31], memarg2wasm(memarg)].concat(),
+        Instr::ILoad16(ValSize::V64, ValSign::S, memarg) => [vec![0x32], memarg2wasm(memarg)].concat(),
+        Instr::ILoad16(ValSize::V64, ValSign::U, memarg) => [vec![0x33], memarg2wasm(memarg)].concat(),
+        Instr::I64Load32(ValSign::S, memarg) => [vec![0x34], memarg2wasm(memarg)].concat(),
+        Instr::I64Load32(ValSign::U, memarg) => [vec![0x35], memarg2wasm(memarg)].concat(),
 
-//         Instr::Store(ValType::I32) => vec![0x36],
-//         Instr::Store(ValType::I64) => vec![0x37],
-//         Instr::Store(ValType::F32) => vec![0x38],
-//         Instr::Store(ValType::F64) => vec![0x39],
+        Instr::Store(ValType::I32, memarg) => [vec![0x36], memarg2wasm(memarg)].concat(),
+        Instr::Store(ValType::I64, memarg) => [vec![0x37], memarg2wasm(memarg)].concat(),
+        Instr::Store(ValType::F32, memarg) => [vec![0x38], memarg2wasm(memarg)].concat(),
+        Instr::Store(ValType::F64, memarg) => [vec![0x39], memarg2wasm(memarg)].concat(),
 
-//         Instr::IStore8(ValSize::V32) => vec![0x3A],
-//         Instr::IStore16(ValSize::V32) => vec![0x3B],
-//         Instr::IStore8(ValSize::V64) => vec![0x3C],
-//         Instr::IStore16(ValSize::V64) => vec![0x3D],
-//         Instr::IStore32(ValSize::V64) => vec![0x3E],
+        Instr::IStore8(ValSize::V32, memarg) => [vec![0x3A], memarg2wasm(memarg)].concat(),
+        Instr::IStore16(ValSize::V32, memarg) => [vec![0x3B], memarg2wasm(memarg)].concat(),
+        Instr::IStore8(ValSize::V64, memarg) => [vec![0x3C], memarg2wasm(memarg)].concat(),
+        Instr::IStore16(ValSize::V64, memarg) => [vec![0x3D], memarg2wasm(memarg)].concat(),
+        Instr::I64Store32(memarg) => [vec![0x3E], memarg2wasm(memarg)].concat(),
         Instr::MemorySize => vec![0x3F, 0x00],
         Instr::MemoryGrow => vec![0x40, 0x00],
 
-//         Instr::I32Const => vec![0x41],
-//         Instr::I64Const => vec![0x42],
-//         Instr::F32Const => vec![0x43],
-//         Instr::F64Const => vec![0x44],
+        Instr::I32Const(n) => [vec![0x41], unsigned32_to_wasm(*n)].concat(),
+        Instr::I64Const(n) => [vec![0x42], unsigned64_to_wasm(*n)].concat(),
+        Instr::F32Const(n) => [vec![0x43], unsigned32_to_wasm(n.to_bits())].concat(),
+        Instr::F64Const(n) => [vec![0x44], unsigned64_to_wasm(n.to_bits())].concat(),
 
         Instr::ITestOp(vs, ITestOp::Eqz) => {
             match vs {
@@ -478,6 +489,13 @@ fn instr2wasm(instr: &Instr) -> Vec<Byte> {
     }
 }
 
+fn memarg2wasm(memarg: &MemArg) -> Vec<Byte> {
+    [
+        unsigned32_to_wasm(memarg.align),
+        unsigned32_to_wasm(memarg.offset),
+    ].concat()
+}
+
 fn globaltype2wasm(gt: &GlobalType) -> Vec<Byte> {
     [
         valtype2wasm(&gt.1),
@@ -527,11 +545,11 @@ fn functype2wasm(func: &FuncType) -> Vec<Byte> {
     .concat()
 }
 
-fn blocktype2wasm(results: &[&ValType]) -> Vec<Byte> {
+fn blocktype2wasm(results: &[ValType]) -> Vec<Byte> {
     if results.is_empty() {
         vec![]
     } else {
-        vec![valtype2wasm(results[0])]
+        vec![valtype2wasm(&results[0])]
     }    
 }
 
@@ -593,6 +611,26 @@ fn unsigned32_to_leb128(n: u32) -> Vec<Byte> {
     }
 }
 
+fn unsigned64_to_wasm(n: u64) -> Vec<Byte> {
+    unsigned64_to_leb128(n)
+}
+
+fn unsigned64_to_leb128(n: u64) -> Vec<Byte> {
+    let mut encoded = vec![];
+    let mut n_u64 = n;
+    loop {
+        // println!("{:#32b}", n_u32);
+        let b = n_u64 & 0x000000000000007F;
+        if b == n_u64 {
+            encoded.push(b as Byte);
+            return encoded;
+        } else {
+            encoded.push((b as Byte) + 0x80);
+            n_u64 >>= 7;
+        }
+    }
+}
+
 #[test]
 fn test_globaltype2wasm() {
 // let module = Module::default();
@@ -625,7 +663,7 @@ fn test_functype2wasm() {
 #[test]
 fn test_blocktype2wasm() {
     assert_eq!(blocktype2wasm(&vec![]), vec![]);
-    assert_eq!(blocktype2wasm(&vec![&ValType::I32]), vec![0x7F]);
+    assert_eq!(blocktype2wasm(&vec![ValType::I32]), vec![0x7F]);
 }
 
 #[test]

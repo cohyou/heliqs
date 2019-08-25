@@ -34,7 +34,10 @@ fn main() {
                     _ => {},
                 }
 
-                mod2wasm(&parser.module);                
+                match mod2wasm(&parser.module) {
+                    Ok(_) => {},
+                    Err(_e) => {},
+                }
             }
             _ => panic!("invalid option"),
         }
