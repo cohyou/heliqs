@@ -1,6 +1,6 @@
 mod error;
-#[macro_use]mod comment;
-#[macro_use]mod keyword;
+#[macro_use] mod comment;
+#[macro_use] mod keyword;
 mod string;
 mod token;
 
@@ -190,8 +190,38 @@ pub(super) fn lex_number(&mut self, sign: u8, begin: Loc) -> LexResult {
             self.loc.add_pos();  // for 0
             self.loc.add_pos();  // for x
             // hexnum
-            self.current = self.read()?;
-            return Ok(Token::number_u(0, self.loc))
+            let mut hexnum = 0;
+
+            loop {
+                match self.current {
+                    b'_' => self.loc.add_pos(),
+                    b'0' => { self.loc.add_pos(); hexnum = hexnum * 16 + 0; },
+                    b'1' => { self.loc.add_pos(); hexnum = hexnum * 16 + 1; },
+                    b'2' => { self.loc.add_pos(); hexnum = hexnum * 16 + 2; },
+                    b'3' => { self.loc.add_pos(); hexnum = hexnum * 16 + 3; },
+                    b'4' => { self.loc.add_pos(); hexnum = hexnum * 16 + 4; },
+                    b'5' => { self.loc.add_pos(); hexnum = hexnum * 16 + 5; },
+                    b'6' => { self.loc.add_pos(); hexnum = hexnum * 16 + 6; },
+                    b'7' => { self.loc.add_pos(); hexnum = hexnum * 16 + 7; },
+                    b'8' => { self.loc.add_pos(); hexnum = hexnum * 16 + 8; },
+                    b'9' => { self.loc.add_pos(); hexnum = hexnum * 16 + 9; },
+                    b'A' => { self.loc.add_pos(); hexnum = hexnum * 16 + 10; },
+                    b'B' => { self.loc.add_pos(); hexnum = hexnum * 16 + 11; },
+                    b'C' => { self.loc.add_pos(); hexnum = hexnum * 16 + 12; },
+                    b'D' => { self.loc.add_pos(); hexnum = hexnum * 16 + 13; },
+                    b'E' => { self.loc.add_pos(); hexnum = hexnum * 16 + 14; },
+                    b'F' => { self.loc.add_pos(); hexnum = hexnum * 16 + 15; },
+                    0xFF => return Err(LexError::eof(self.loc)),
+                    _ => break,                
+                }
+                self.current = self.read()?;
+            }
+            
+            match sign {
+                b'+' => return Ok(Token::number_u(hexnum, begin)),
+                b'-' => return Ok(Token::number_i(-(hexnum as isize), begin)),
+                _ => return Err(self.err(self.current)),
+            }    
         }
     }
 
