@@ -83,9 +83,9 @@ fn next_token_internal(&mut self) -> LexResult {
             },
 
             // keyword
-            b'a' ... b'z' => {
+            b'a' ... b'z' => {                
                 self.loc.add_pos();
-                let new_loc = self.loc;
+                let begin = self.loc;
 
                 let mut keyword = vec![self.current];
                 let mut keyword_c = self.read()?;
@@ -100,9 +100,13 @@ fn next_token_internal(&mut self) -> LexResult {
                     keyword_c = self.read()?;
                 }
 
-                return vec_to_keyword(keyword.as_slice())
-                .map_or(Ok(Token::reserved(keyword, new_loc)),
-                |kw| Ok(Token::keyword(kw, new_loc)))
+                match keyword.as_slice() {
+                    b"inf" => return Ok(Token::number_f(std::f64::INFINITY, begin)),
+                    b"nan" => return Ok(Token::number_f(std::f64::NAN, begin)),
+                    _ => return vec_to_keyword(keyword.as_slice())
+                                .map_or(Ok(Token::reserved(keyword, begin)),
+                                |kw| Ok(Token::keyword(kw, begin)))                    
+                }
             },
 
             // num or hexnum (uN)
@@ -182,8 +186,44 @@ fn next_token_internal(&mut self) -> LexResult {
     }
 }
 
-pub(super) fn lex_number(&mut self, sign: u8, begin: Loc) -> LexResult {
+fn lex_bytes(&mut self, frag: &[u8]) -> Result<(), LexError> {
+    for c in frag {
+        self.current = self.read()?;
+        self.loc.add_pos();
+        if self.current != *c {
+            return Err(self.err(self.current));
+        }
+    }
+    Ok(())
+}
 
+pub(super) fn lex_number(&mut self, sign: u8, begin: Loc) -> LexResult {
+    match self.current {
+        b'i' => {
+            self.loc.add_pos();
+
+            self.lex_bytes(b"nf")?;
+
+            self.current = self.read()?;
+
+            match sign {
+                b'+' => return Ok(Token::number_f(std::f64::INFINITY, begin)),
+                b'-' => return Ok(Token::number_f(std::f64::NEG_INFINITY, begin)),
+                _ => return Err(self.err(self.current)),
+            }
+            
+        },
+        b'n' => {
+            self.loc.add_pos();
+
+            self.lex_bytes(b"an")?;
+
+            self.current = self.read()?;
+
+            return Ok(Token::number_f(std::f64::NAN, begin));
+        },
+        _ => {},
+    }
     if self.current == b'0' {
         if self.peek()? == b'x' {
             self.read()?;
