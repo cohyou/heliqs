@@ -38,7 +38,14 @@ fn main() {
                     Ok(_) => {},
                     Err(_e) => {},
                 }
-            }
+            },
+            "-d" => {
+                use heliqs::module_decode;
+                match module_decode() {
+                    Ok(_) => {},
+                    Err(e) => println!("DECODE ERROR: {:?}", e),
+                }
+            },
             _ => panic!("invalid option"),
         }
     } else {
