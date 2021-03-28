@@ -157,10 +157,10 @@ fn vec_to_instr(s: &[u8]) -> Option<Instr> {
                             Some(Instr::FBinOp(vs, vec_to_fbinop(instr).unwrap()))
                         },                        
                     }                    
-                }
+                },
 
-                b"mul" => Some(Instr::IBinOp(vs, IBinOp::Mul)),
-                b"and" => Some(Instr::IBinOp(vs, IBinOp::And)),
+                // b"mul" => Some(Instr::IBinOp(vs, IBinOp::Mul)),
+                // b"and" => Some(Instr::IBinOp(vs, IBinOp::And)),
                 b"or" => Some(Instr::IBinOp(vs, IBinOp::Or)),
                 b"xor" => Some(Instr::IBinOp(vs, IBinOp::Xor)),
                 b"shl" => Some(Instr::IBinOp(vs, IBinOp::Shl)),
@@ -285,5 +285,5 @@ fn vec_to_frelop(s: &[u8]) -> Option<FRelOp> {
     }
 }
 
-fn default_result_type() -> ResultType { (vec![]) }
+fn default_result_type() -> ResultType { vec![] }
 fn default_br_table() -> Vec<LabelIndex> { vec![] }

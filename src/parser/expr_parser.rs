@@ -137,9 +137,9 @@ impl<R> Parser<R> where R: Read + Seek {
                     self.consume()?;
                 },
 
-                tk!(TokenKind::RightParen) | kw!(Keyword::Else) | kw!(Keyword::End) => {
-                    break;
-                }
+                tk!(TokenKind::RightParen) => { break; },
+                kw!(Keyword::Else) => { break; },
+                kw!(Keyword::End) => { break; },
                 _ => {},
             }
         }

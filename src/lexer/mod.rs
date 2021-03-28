@@ -83,7 +83,7 @@ fn next_token_internal(&mut self) -> LexResult {
             },
 
             // keyword
-            b'a' ... b'z' => {                
+            b'a' ..= b'z' => {                
                 self.loc.add_pos();
                 let begin = self.loc;
 
@@ -110,7 +110,7 @@ fn next_token_internal(&mut self) -> LexResult {
             },
 
             // num or hexnum (uN)
-            b'0' ... b'9' => return self.lex_number(b'+', self.loc.added(1)),
+            b'0' ..= b'9' => return self.lex_number(b'+', self.loc.added(1)),
 
             // number
             b @ b'+' | b @ b'-' => {
@@ -366,9 +366,9 @@ fn err(&self, c: u8) -> LexError {
 
 fn is_idchar(c: u8) -> bool {
     match c {
-        b'0' ... b'9' |
-        b'A' ... b'Z' |
-        b'a' ... b'z' |
+        b'0' ..= b'9' |
+        b'A' ..= b'Z' |
+        b'a' ..= b'z' |
         b'!' | b'#' | b'$' | b'%' | b'&' | b'\'' | b'*' | b'+' | b'-' | b'.' | b'/' |
         b':' | b'<' | b'=' | b'>' | b'?' | b'@' | b'\\' | b'^' | b'_' | b'`' | b'|' | b'~' => true,
         _ => false,

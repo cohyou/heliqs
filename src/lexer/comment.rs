@@ -76,12 +76,12 @@ pub(super) fn lex_block_comment(&mut self) -> Result<(), LexError>
             b'\r' => {},
 
             // count byte as codepoint (not utf-8 bit pattern)
-            0x00 ... 0x7F => self.loc.add_pos(),
-            0xC2 ... 0xDF | 0xE0 ... 0xEF => {
+            0x00 ..= 0x7F => self.loc.add_pos(),
+            0xC2 ..= 0xDF | 0xE0 ..= 0xEF => {
                 self.loc.add_pos();
                 self.read()?;
             },
-            0xF0 ... 0xF7 => {
+            0xF0 ..= 0xF7 => {
                 self.loc.add_pos();
                 self.read()?;
                 self.read()?;                

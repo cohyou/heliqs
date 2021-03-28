@@ -20,16 +20,16 @@ pub(super) fn lex_string(&mut self) -> LexResult {
                 if rest_of_byte_of_char == 0 {
                     // count byte as codepoint (not utf-8 bit pattern)
                     match string_c {
-                        0x00 ... 0x7F => self.loc.add_pos(),
-                        0xC2 ... 0xDF => {                                        
+                        0x00 ..= 0x7F => self.loc.add_pos(),
+                        0xC2 ..= 0xDF => {                                        
                             rest_of_byte_of_char = 1;
                             byte_length_of_codepoint = 2;
                         },
-                        0xE0 ... 0xEF => {
+                        0xE0 ..= 0xEF => {
                             rest_of_byte_of_char = 2;
                             byte_length_of_codepoint = 2;                                        
                         },
-                        0xF0 ... 0xF7 => {
+                        0xF0 ..= 0xF7 => {
                             rest_of_byte_of_char = 3;
                             byte_length_of_codepoint = 3;                                        
                         },
@@ -37,7 +37,7 @@ pub(super) fn lex_string(&mut self) -> LexResult {
                     }
                 } else {
                     match string_c {
-                        0x80 ... 0xBF => {
+                        0x80 ..= 0xBF => {
                             rest_of_byte_of_char -= 1;
                             if rest_of_byte_of_char == 0 {
                                 for _ in 0..byte_length_of_codepoint {
